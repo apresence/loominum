@@ -1,7 +1,7 @@
 """
 Configuration management for executor server.
 
-Loads settings from data/executor/config.json using $PRJ_DIR environment variable.
+Loads settings from data/unbillicord/config.json using $PRJ_DIR environment variable.
 """
 
 import os
@@ -12,14 +12,14 @@ from pathlib import Path
 
 
 class ExecutorConfig:
-    """Executor server configuration loaded from data/executor/config.json."""
+    """Executor server configuration loaded from data/unbillicord/config.json."""
     
     def __init__(self, config_path: tp.Optional[Path] = None):
         """
         Load configuration from file.
         
         Args:
-            config_path: Path to config file. If None, uses $PRJ_DIR/data/executor/config.json
+            config_path: Path to config file. If None, uses $PRJ_DIR/data/unbillicord/config.json
         
         Raises:
             RuntimeError: If PRJ_DIR environment variable is not set
@@ -39,7 +39,7 @@ class ExecutorConfig:
         if not self.config_path.exists():
             raise FileNotFoundError(
                 f"Executor config not found: {self.config_path}\n"
-                f"Expected location: $PRJ_DIR/data/executor/config.json"
+                f"Expected location: $PRJ_DIR/data/unbillicord/config.json"
             )
         
         with open(self.config_path, 'r') as f:
@@ -58,7 +58,7 @@ class ExecutorConfig:
             KeyError: If server_url not configured
         """
         if 'server_url' not in self._data:
-            raise KeyError("server_url must be configured in data/executor/config.json")
+            raise KeyError("server_url must be configured in data/unbillicord/config.json")
         return self._data['server_url']
     
     @property
@@ -76,7 +76,7 @@ class ExecutorConfig:
             KeyError: If client_url not configured
         """
         if 'client_url' not in self._data:
-            raise KeyError("client_url must be configured in data/executor/config.json")
+            raise KeyError("client_url must be configured in data/unbillicord/config.json")
         return self._data['client_url']
     
     @property

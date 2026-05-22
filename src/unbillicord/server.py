@@ -46,7 +46,7 @@ if not prj_dir:
 sys.path.insert(0, str(Path(prj_dir) / 'src'))
 
 from snapp import Config
-from executor.config import ExecutorConfig
+from unbillicord.config import ExecutorConfig
 
 # Setup logging - use executor config for log file path
 try:

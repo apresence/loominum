@@ -13,7 +13,7 @@ When the server restarts, all initialization code is automatically re-sent to th
 ### 1. Register Initialization Code (Python)
 
 ```python
-from executor.server import executor
+from unbillicord.server import executor
 
 # Set up browser-side observer
 executor.add_init('''
@@ -99,7 +99,7 @@ When the server restarts or browser reconnects:
 
 ```python
 # setup_download_monitor.py
-from executor.server import executor
+from unbillicord.server import executor
 
 # Browser-side: Watch for download links
 executor.add_init('''

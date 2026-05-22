@@ -14,7 +14,7 @@ if not prj_dir:
     )
 sys.path.insert(0, str(Path(prj_dir) / 'src'))
 
-from executor.config import ExecutorConfig
+from unbillicord.config import ExecutorConfig
 
 # Load executor configuration
 config = ExecutorConfig()

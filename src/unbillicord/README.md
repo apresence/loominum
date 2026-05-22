@@ -41,7 +41,7 @@ Browser automation system with bidirectional event-driven communication.
 ### Start Server
 
 ```bash
-python src/executor/server.py
+python src/unbillicord/server.py
 ```
 
 Server runs on `http://localhost:7773` (configurable via `data/config.json`)
@@ -57,7 +57,7 @@ fetch('http://localhost:7773/remote.js?t='+Date.now()).then(r=>r.text()).then(ev
 ### Execute Code (Python)
 
 ```python
-from executor import ExecutorClient
+from unbillicord import ExecutorClient
 
 client = ExecutorClient()
 await client.connect()
@@ -77,7 +77,7 @@ See [EVENTS.md](EVENTS.md) for full documentation.
 ### Register Browser Observers (Python)
 
 ```python
-from executor.server import executor
+from unbillicord.server import executor
 
 # This code runs in browser on connect/reconnect
 executor.add_init('''
@@ -172,7 +172,7 @@ executor.is_connected() -> bool
 **Pattern for restart-safe setup:**
 ```python
 # In your main application startup (e.g., __main__ or setup function)
-from executor.server import executor
+from unbillicord.server import executor
 
 # Register init code (clears on restart, must re-register)
 executor.add_init('''

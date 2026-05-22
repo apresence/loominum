@@ -142,7 +142,7 @@ server {
 
 6. **Start the executor server:**
    ```bash
-   python src/executor/server.py
+   python src/unbillicord/server.py
    ```
 
 ## Testing the Setup
@@ -238,7 +238,7 @@ If you don't have NGINX but want to use wss:// (secure WebSocket), you can confi
 #    Or:      "executor_hostname": "192.168.1.100"
 
 # 2. Generate certificate (reads hostname from config)
-cd /mnt/global/prj/dev/snapp/src/executor
+cd /mnt/global/prj/dev/snapp/src/unbillicord
 ./gencert.sh
 
 # 3. Trust certificate in browser (see below)
@@ -289,10 +289,10 @@ The script automatically reads `executor_hostname` from `data/config.json` and i
 ```bash
 # Config has "executor_hostname": "myserver.local"
 # But also want to access via IP
-./src/executor/gencert.sh 192.168.1.100
+./src/unbillicord/gencert.sh 192.168.1.100
 
 # Add multiple additional SANs
-./src/executor/gencert.sh another-name.local 10.0.0.50
+./src/unbillicord/gencert.sh another-name.local 10.0.0.50
 ```
 
 Or manually:
@@ -308,11 +308,11 @@ openssl req -x509 -newkey rsa:4096 \
 ```
 
 This creates:
-- `src/executor/certs/cert.pem` - Public certificate
-- `src/executor/certs/key.pem` - Private key
+- `src/unbillicord/certs/cert.pem` - Public certificate
+- `src/unbillicord/certs/key.pem` - Private key
 
 **Important:** The certificate's Subject Alternative Names (SANs) must match the hostname/IP you use to access the server
-- `src/executor/certs/key.pem` - Private key
+- `src/unbillicord/certs/key.pem` - Private key
 
 **Important:** The certificate's Subject Alternative Names (SANs) must match the hostname/IP you use to access the server. If you access via `https://192.168.1.100:7993`, the certificate must include `IP:192.168.1.100`.
 
@@ -324,7 +324,7 @@ The browser will warn about the self-signed certificate until you trust it.
 1. Navigate to `chrome://settings/certificates` (or `edge://settings/certificates`)
 2. Click **Authorities** tab
 3. Click **Import**
-4. Select `src/executor/certs/cert.pem`
+4. Select `src/unbillicord/certs/cert.pem`
 5. Check "Trust this certificate for identifying websites"
 6. Click OK
 
@@ -334,7 +334,7 @@ The browser will warn about the self-signed certificate until you trust it.
 3. Click **View Certificates**
 4. Click **Authorities** tab
 5. Click **Import**
-6. Select `src/executor/certs/cert.pem`
+6. Select `src/unbillicord/certs/cert.pem`
 7. Check "Trust this CA to identify websites"
 8. Click OK
 
@@ -374,7 +374,7 @@ This value is used to construct the connection URL shown at server startup.
 ### 4. Start Server
 
 ```bash
-python src/executor/server.py
+python src/unbillicord/server.py
 ```
 
 You should see:
@@ -408,24 +408,24 @@ onfig has `executor_hostname: "myserver.local"`, but you're accessing via IP `ht
 ```bash
 # Edit data/config.json, change executor_hostname to the IP/hostname you're using
 # Then regenerate certificate
-./src/executor/gencert.sh
+./src/unbillicord/gencert.sh
 # Re-trust the new certificate in your browser
 ```
 
 **Fix Option 2 - Add additional SAN:**
 ```bash
 # Keep current config, but add IP as additional SAN
-./src/executor/gencert.sh 192.168.1.100
+./src/unbillicord/gencert.sh 192.168.1.100
 # Re-trust the new certificate in your browser
 ```
 
 **Verify certificate SANs:**
 ```bash
-openssl x509 -in src/executor/certs/cert.pem -text -noout | grep -A1 "Subject Alternative Name"
+openssl x509 -in src/unbillicord/certs/cert.pem -text -noout | grep -A1 "Subject Alternative Name"
 ```
 
 Should show: `DNS:localhost, IP:127.0.0.1, DNS:myserver.local` (or your configured hostname
-openssl x509 -in src/executor/certs/cert.pem -text -noout | grep -A1 "Subject Alternative Name"
+openssl x509 -in src/unbillicord/certs/cert.pem -text -noout | grep -A1 "Subject Alternative Name"
 ```
 
 Should show: `DNS:localhost, IP:127.0.0.1, IP:192.168.1.100` (or whatever you added)
@@ -434,7 +434,7 @@ Should show: `DNS:localhost, IP:127.0.0.1, IP:192.168.1.100` (or whatever you ad
 
 Check that the cert files exist:
 ```bash
-ls -la src/executor/certs/
+ls -la src/unbillicord/certs/
 ```
 
 Should show:
@@ -462,7 +462,7 @@ fig to use http (optional - will fallback to http:// without cert anyway)
 #   "executor_hostname": "localhost"
 
 # Restart server (will use http:// without SSL)
-python src/executor/server.py
+python src/unbillicord/server.py
 ```
 
 ## Configuration Reference
@@ -482,12 +482,12 @@ The `executor_hostname` value affects:
 - SSL certificate CN (Common Name)
 - SSL certificate SAN (always includes hostname + localhost + 127.0.0.1)
 - WebSocket connection endpointemove certificate files
-rm -rf src/executor/certs/
+rm -rf src/unbillicord/certs/
 
 # Update connection URL
-# Edit src/executor/common.py:
+# Edit src/unbillicord/common.py:
 CLIENT_CONNECTION_URL = 'http://localhost:7993'
 
 # Restart server (will use http:// without SSL)
-python src/executor/server.py
+python src/unbillicord/server.py
 ```

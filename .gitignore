@@ -10,9 +10,9 @@ __pycache__/
 .mypy_cache/
 
 # Runtime data — keep config.json template tracked, ignore generated state
-data/executor/*.pem
-data/executor/*.pem.bak
-data/executor/pids/
+data/unbillicord/*.pem
+data/unbillicord/*.pem.bak
+data/unbillicord/pids/
 log/
 
 # OAuth + secrets, in case a transport later persists tokens

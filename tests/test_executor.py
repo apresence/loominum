@@ -11,8 +11,8 @@ from pathlib import Path
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from executor.client import ExecutorClient
-from executor.server import executor
+from unbillicord.client import ExecutorClient
+from unbillicord.server import executor
 
 
 async def test_executor():

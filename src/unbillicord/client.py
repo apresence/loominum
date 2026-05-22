@@ -15,7 +15,7 @@ from datetime import datetime
 try:
     from .config import ExecutorConfig
 except ImportError:
-    from executor.config import ExecutorConfig
+    from unbillicord.config import ExecutorConfig
 
 logger = logging.getLogger(__name__)
 
@@ -121,8 +121,8 @@ class ExecutorClient:
                     "PRJ_DIR environment variable not set. "
                     "Please run: . .init"
                 )
-            self._cert_path = cert_path or str(Path(prj_dir) / 'data/executor/cert.pem')
-            self._key_path = key_path or str(Path(prj_dir) / 'data/executor/key.pem')
+            self._cert_path = cert_path or str(Path(prj_dir) / 'data/unbillicord/cert.pem')
+            self._key_path = key_path or str(Path(prj_dir) / 'data/unbillicord/key.pem')
         
         # Parse and construct WebSocket URL
         if url.startswith('http://') or url.startswith('https://'):

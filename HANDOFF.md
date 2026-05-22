@@ -1,10 +1,10 @@
-# executor — handoff for the next agent
+# unbillicord — handoff for the next agent
 
 Read this first if you're picking this project up.
 
 ## What this is
 
-`executor` is being extracted from snapp into a standalone library. The
+`unbillicord` is being extracted from snapp into a standalone library. The
 goal is a publishable Python package that does the heavy lifting of
 driving a live browser from Python with bidirectional async events —
 across two transports — so application code doesn't have to.
@@ -14,22 +14,22 @@ plan.
 
 ## Where the code came from
 
-`src/executor/` was copied verbatim from `snapp/src/executor/` on 2026-05-22.
+`src/unbillicord/` was copied verbatim from `snapp/src/unbillicord/` on 2026-05-22.
 Cleanup so far:
 
-- `data/executor/config.json` — replaced snapp-specific values with
+- `data/unbillicord/config.json` — replaced snapp-specific values with
   localhost defaults, TLS off.
 - `__pycache__/` removed.
 - Cert artefacts (`*.pem.bak`) not copied; cert install scripts retained.
 
 Cleanup **not** done yet (low risk, defer until you start touching code):
 
-- `src/executor/README.md` still uses some snapp examples (download-monitor
+- `src/unbillicord/README.md` still uses some snapp examples (download-monitor
   patterns, clip IDs). Replace with site-agnostic examples.
 - `common.py` requires `$PRJ_DIR`. Fine for `snapp`'s monorepo style, awkward
   for a library. Consider supporting an explicit config path or a normal
   config-discovery (cwd, `~/.config/executor/`, env).
-- `config.py` raises if `data/executor/config.json` is missing. A library
+- `config.py` raises if `data/unbillicord/config.json` is missing. A library
   should ship sensible defaults and only require config for non-default
   setups.
 
@@ -137,15 +137,15 @@ between transports by config change alone.
 ## Suggested phasing
 
 1. **Phase 0** — light cleanup pass on what's here. Remove snapp examples
-   from `src/executor/README.md`, decouple config from `$PRJ_DIR` (allow
+   from `src/unbillicord/README.md`, decouple config from `$PRJ_DIR` (allow
    explicit path or stdlib `appdirs`-style default). Smoke-test the
    carried-over `tests/test_executor.py`.
 
 2. **Phase 1** — package skeleton. Add `pyproject.toml`, console-script
-   entrypoint (`executor` → `executor.server:main`), pin runtime deps
+   entrypoint (`unbillicord` → `executor.server:main`), pin runtime deps
    (`aiohttp` etc.).
 
-3. **Phase 2** — CDP sidecar. New module, e.g. `src/executor/cdp.py`:
+3. **Phase 2** — CDP sidecar. New module, e.g. `src/unbillicord/cdp.py`:
    `class CDPTransport` with `start(target_url, page_script)`,
    `evaluate(js)`, `dispatch_key(...)`. Wire as an alternate front-end to
    `RemoteExecutor` — sidecar opens an outbound WSS to the existing
@@ -164,16 +164,16 @@ between transports by config change alone.
 
 ## Open questions to flag to Chris
 
-- Package name on PyPI (`executor` is taken; bikeshed later).
+- Package name on PyPI (`unbillicord` is taken; bikeshed later).
 - License (MIT? Apache-2.0?).
 - Whether to support a `.init`-style sourceable env file like sibling
   projects, or a more conventional config-discovery.
 - Snapp will keep its own embedded copy until the library is published —
-  do not delete `snapp/src/executor/` without his sign-off.
+  do not delete `snapp/src/unbillicord/` without his sign-off.
 
 ## Pointers
 
-- snapp executor source (the parent): `/d/pm/mounts/global/prj/dev/snapp/src/executor/`
+- snapp executor source (the parent): `/d/pm/mounts/global/prj/dev/snapp/src/unbillicord/`
 - snapp-specific session memory:
   `~/.claude/projects/C--Users-apres/memory/history/session_20260329_snapp_executor.md`
 - webbie CDP reference: `gigaro/cortex-docs` repo, `mvp-2/cortex-ex/services/webbie/relay.js`

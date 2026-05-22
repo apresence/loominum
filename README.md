@@ -1,4 +1,4 @@
-# executor
+# unbillicord
 
 A Python library for driving and observing a live browser session from Python
 code, with bidirectional async event flow. Python pushes JavaScript into the
@@ -29,16 +29,16 @@ Same `executor.exec / on / add_init / navigate` API across both transports.
 
 ## Status
 
-- `src/executor/` — JS-injection implementation, copied from
-  `snapp/src/executor/` on 2026-05-22. Light cleanup pending. Site-agnostic
+- `src/unbillicord/` — JS-injection implementation, copied from
+  `snapp/src/unbillicord/` on 2026-05-22. Light cleanup pending. Site-agnostic
   API surface; the snapp-specific defaults (port 18199, gigaro.ai client URL,
-  `tau` cert SAN) are stripped — `data/executor/config.json` ships with
+  `tau` cert SAN) are stripped — `data/unbillicord/config.json` ships with
   localhost defaults.
-- `src/executor/README.md` — the API documentation (server/client/browser).
+- `src/unbillicord/README.md` — the API documentation (server/client/browser).
   Still uses snapp examples in places; treat as authoritative for the API,
   illustrative for the use cases.
-- `src/executor/EVENTS.md` — event-system documentation.
-- `src/executor/NGINX.md` — deployment notes for fronting the executor with
+- `src/unbillicord/EVENTS.md` — event-system documentation.
+- `src/unbillicord/NGINX.md` — deployment notes for fronting the executor with
   nginx (TLS termination, path-based routing).
 - CDP sidecar — not yet built. Next-agent task; see HANDOFF.md.
 
@@ -50,7 +50,7 @@ executor/
 ├── HANDOFF.md             design doc for the next agent picking this up
 ├── .gitignore
 ├── .local/                gitignored — local dev notes, gitea config
-├── src/executor/          library source (snapp base + planned CDP sidecar)
+├── src/unbillicord/          library source (snapp base + planned CDP sidecar)
 │   ├── __init__.py
 │   ├── server.py          WS server (1039 LOC — handles both /remote browser and /client python endpoints)
 │   ├── client.py          Python client (473 LOC)
@@ -62,7 +62,7 @@ executor/
 │   ├── README.md          API reference (snapp-flavored examples)
 │   ├── EVENTS.md          event system
 │   └── NGINX.md           nginx deployment notes
-├── data/executor/
+├── data/unbillicord/
 │   └── config.json        template — localhost defaults, no TLS
 └── tests/
     └── test_executor.py   smoke test carried from snapp
@@ -73,13 +73,13 @@ executor/
 Set `PRJ_DIR` to the project root before running:
 
 ```bash
-export PRJ_DIR=/d/pm/mounts/global/prj/dev/executor
+export PRJ_DIR=/d/pm/mounts/global/prj/dev/unbillicord
 ```
 
 (There's a `.init` convention in sibling projects — port that pattern if you
 want a sourceable env file. Not done yet.)
 
-Then edit `$PRJ_DIR/data/executor/config.json` for your transport:
+Then edit `$PRJ_DIR/data/unbillicord/config.json` for your transport:
 
 ```json
 {
@@ -94,7 +94,7 @@ Then edit `$PRJ_DIR/data/executor/config.json` for your transport:
 For TLS: set `cert_sans` to a comma-separated list of hostnames/IPs to
 include in the cert SANs (e.g. `"localhost,192.168.1.100"`) and use an
 `https://` scheme on `server_url`. Cert install helpers under
-`src/executor/scripts/`.
+`src/unbillicord/scripts/`.
 
 ## Quick start (current JS-injection mode)
 
@@ -113,7 +113,7 @@ Then from Python:
 
 ```python
 import asyncio
-from executor import ExecutorClient
+from unbillicord import ExecutorClient
 
 async def main():
     async with ExecutorClient() as client:
@@ -123,4 +123,4 @@ async def main():
 asyncio.run(main())
 ```
 
-See `src/executor/README.md` for the full API.
+See `src/unbillicord/README.md` for the full API.
