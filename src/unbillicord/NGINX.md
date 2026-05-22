@@ -1,29 +1,29 @@
-# NGINX Reverse Proxy Setup for Remote Executor
+# NGINX Reverse Proxy Setup for UnBilliCord
 
-This guide explains how to configure NGINX to forward external HTTPS connections to the local Remote Executor server.
+This guide explains how to configure NGINX to forward external HTTPS connections to the local UnBilliCord server.
 
-> **Alternative:** If you don't have NGINX, see [Self-Signed SSL Certificate](#self-signed-ssl-certificate) below for running the executor with HTTPS directly.
+> **Alternative:** If you don't have NGINX, see [Self-Signed SSL Certificate](#self-signed-ssl-certificate) below for running UnBilliCord with HTTPS directly.
 
 ## Overview
 
 The setup forwards:
-- External: `https://nginxhost.somewhere.com/executor` → Internal: `http://127.0.0.1:7773`
+- External: `https://nginxhost.somewhere.com/ubc` → Internal: `http://127.0.0.1:7773`
 - Supports both HTTP requests and WebSocket connections
 
 ## Prerequisites
 
 - NGINX installed on your server
 - SSL certificate for your domain (e.g., via Let's Encrypt)
-- Remote Executor server running on `127.0.0.1:7773`
+- UnBilliCord server running on `127.0.0.1:7773`
 
 ## NGINX Configuration
 
 Add the following to your NGINX site configuration (typically in `/etc/nginx/sites-available/your-domain`):
 
 ```nginx
-# Executor reverse proxy configuration
-location /executor/ {
-    # Proxy to local executor server
+# UnBilliCord reverse proxy configuration
+location /ubc/ {
+    # Proxy to local UnBilliCord server
     proxy_pass http://127.0.0.1:7773/;
     
     # WebSocket support
@@ -73,8 +73,8 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
     
-    # Executor reverse proxy
-    location /executor/ {
+    # UnBilliCord reverse proxy
+    location /ubc/ {
         proxy_pass http://127.0.0.1:7773/;
         
         # WebSocket support
@@ -123,7 +123,7 @@ server {
    sudo nano /etc/nginx/sites-available/your-domain
    ```
 
-2. **Add the executor location block** to your server configuration (see above)
+2. **Add UnBilliCord location block** to your server configuration (see above)
 
 3. **Test NGINX configuration:**
    ```bash
@@ -137,10 +137,10 @@ server {
 
 5. **Update `common.py` with your public URL:**
    ```python
-   CLIENT_CONNECTION_URL = 'https://nginxhost.somewhere.com/executor'
+   CLIENT_CONNECTION_URL = 'https://nginxhost.somewhere.com/ubc'
    ```
 
-6. **Start the executor server:**
+6. **Start UnBilliCord server:**
    ```bash
    python src/unbillicord/server.py
    ```
@@ -149,12 +149,12 @@ server {
 
 ### Test HTTP endpoint
 ```bash
-curl https://nginxhost.somewhere.com/executor/downloaded-clips
+curl https://nginxhost.somewhere.com/ubc/cert.pem
 ```
 
 ### Test WebSocket connection (browser console)
 ```javascript
-fetch('https://nginxhost.somewhere.com/executor/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
+fetch('https://nginxhost.somewhere.com/ubc/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
 ```
 
 ## Troubleshooting
@@ -170,12 +170,12 @@ Verify WebSocket upgrade headers are being passed:
 ```bash
 curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
   -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: test" \
-  https://nginxhost.somewhere.com/executor/remote
+  https://nginxhost.somewhere.com/ubc/remote
 ```
 
 ### 502 Bad Gateway
 
-- Ensure executor server is running: `ps aux | grep executor`
+- Ensure the UnBilliCord server is running: `ps aux | grep unbillicord`
 - Check if server is listening: `netstat -tlnp | grep 7773`
 - Verify firewall allows local connections
 
@@ -190,10 +190,10 @@ Make sure CORS headers are included in the NGINX configuration (see above).
    sudo ufw deny 7773
    ```
 
-2. **Authentication:** Consider adding HTTP basic auth to the `/executor/` location:
+2. **Authentication:** Consider adding HTTP basic auth to the `/ubc/` location:
    ```nginx
-   location /executor/ {
-       auth_basic "Executor Access";
+   location /ubc/ {
+       auth_basic "UnBilliCord Access";
        auth_basic_user_file /etc/nginx/.htpasswd;
        # ... rest of config
    }
@@ -201,7 +201,7 @@ Make sure CORS headers are included in the NGINX configuration (see above).
 
 3. **IP Whitelisting:** Restrict access to specific IPs:
    ```nginx
-   location /executor/ {
+   location /ubc/ {
        allow 203.0.113.0/24;  # Your IP range
        deny all;
        # ... rest of config
@@ -212,14 +212,13 @@ Make sure CORS headers are included in the NGINX configuration (see above).
 
 | External URL | Internal URL | Description |
 |--------------|--------------|-------------|
-| `https://nginxhost.somewhere.com/executor/remote.js` | `http://127.0.0.1:7773/remote.js` | Browser script |
-| `wss://nginxhost.somewhere.com/executor/remote` | `ws://127.0.0.1:7773/remote` | Browser WebSocket |
-| `wss://nginxhost.somewhere.com/executor/client` | `ws://127.0.0.1:7773/client` | Python client WebSocket |
-| `https://nginxhost.somewhere.com/executor/downloaded-clips` | `http://127.0.0.1:7773/downloaded-clips` | HTTP API endpoint |
+| `https://nginxhost.somewhere.com/ubc/remote.js` | `http://127.0.0.1:7773/remote.js` | Browser script |
+| `wss://nginxhost.somewhere.com/ubc/remote` | `ws://127.0.0.1:7773/remote` | Browser WebSocket |
+| `wss://nginxhost.somewhere.com/ubc/client` | `ws://127.0.0.1:7773/client` | Python client WebSocket |
 
 ## Notes
 
-- The trailing slash in `proxy_pass http://127.0.0.1:7773/;` is important - it strips the `/executor` prefix
+- The trailing slash in `proxy_pass http://127.0.0.1:7773/;` is important - it strips the `/ubc` prefix
 - WebSocket connections can stay open for days - set appropriate timeouts
 - Monitor NGINX logs in `/var/log/nginx/` for debugging
 
@@ -227,18 +226,18 @@ Make sure CORS headers are included in the NGINX configuration (see above).
 
 # Self-Signed SSL Certificate
 
-If you don't have NGINX but want to use wss:// (secure WebSocket), you can configure the executor server to use a self-signed certificate directly.
+If you don't have NGINX but want to use wss:// (secure WebSocket), you can configure UnBilliCord server to use a self-signed certificate directly.
 
 ## Quick Start
 
 ```bash
-# 1. Configure hostname (edit data/config.json)
-#    Set "executor_hostname" to your server's hostname/IP
-#    Example: "executor_hostname": "myserver.local"
-#    Or:      "executor_hostname": "192.168.1.100"
+# 1. Configure hostname (edit data/unbillicord/config.json)
+#    Set "ubc_hostname" to your server's hostname/IP
+#    Example: "ubc_hostname": "myserver.local"
+#    Or:      "ubc_hostname": "192.168.1.100"
 
 # 2. Generate certificate (reads hostname from config)
-cd /mnt/global/prj/dev/snapp/src/unbillicord
+cd /mnt/global/prj/dev/unbillicord/src/unbillicord
 ./gencert.sh
 
 # 3. Trust certificate in browser (see below)
@@ -254,11 +253,11 @@ python server.py
 
 ### 0. Configure Hostname
 
-Edit `data/config.json` and set the `executor_hostname` field to your server's hostname or IP address:
+Edit `data/unbillicord/config.json` and set the `ubc_hostname` field to your server's hostname or IP address:
 
 ```json
 {
-  "executor_hostname": "myserver.local",
+  "ubc_hostname": "myserver.local",
   // ... other settings
 }
 ```
@@ -266,7 +265,7 @@ Edit `data/config.json` and set the `executor_hostname` field to your server's h
 Or for an IP address:
 ```json
 {
-  "executor_hostname": "192.168.1.100",
+  "ubc_hostname": "192.168.1.100",
   // ... other settings
 }
 ```
@@ -283,11 +282,11 @@ Run the provided script:
 util/gencert.py
 ```
 
-The script automatically reads `executor_hostname` from `data/config.json` and includes it in the certificate.
+The script automatically reads `ubc_hostname` from `data/unbillicord/config.json` and includes it in the certificate.
 
 **To add additional hostnames/IPs**, pass them as arguments:
 ```bash
-# Config has "executor_hostname": "myserver.local"
+# Config has "ubc_hostname": "myserver.local"
 # But also want to access via IP
 ./src/unbillicord/gencert.sh 192.168.1.100
 
@@ -362,10 +361,10 @@ if cert_file.exists() and key_file.exists():
     # Server runs with https:// and wss://
 ```
 
-The hostname is configured in `data/config.json`:
+The hostname is configured in `data/unbillicord/config.json`:
 ```json
 {
-  "executor_hostname": "myserver.local"
+  "ubc_hostname": "myserver.local"
 }
 ```
 
@@ -402,11 +401,11 @@ If the certificate is trusted, this will connect without warnings.
 
 **Cause:** The certificate hasn't been trusted yet.
 **Fix:** Follow Step 2 above to trust it in your browser.
-onfig has `executor_hostname: "myserver.local"`, but you're accessing via IP `https://192.168.1.100:7993`
+onfig has `ubc_hostname: "myserver.local"`, but you're accessing via IP `https://192.168.1.100:7993`
 
 **Fix Option 1 - Update config and regenerate:**
 ```bash
-# Edit data/config.json, change executor_hostname to the IP/hostname you're using
+# Edit data/unbillicord/config.json, change ubc_hostname to the IP/hostname you're using
 # Then regenerate certificate
 ./src/unbillicord/gencert.sh
 # Re-trust the new certificate in your browser
@@ -458,8 +457,8 @@ Self-signed certs expire (default 365 days). Re-run `util/gencert.py --force` to
 - **Regenerate periodically:** Certificates expire after 365 days
 - **For production:** Use Let's Encrypt or other trusted CA
 fig to use http (optional - will fallback to http:// without cert anyway)
-# Edit data/config.json:
-#   "executor_hostname": "localhost"
+# Edit data/unbillicord/config.json:
+#   "ubc_hostname": "localhost"
 
 # Restart server (will use http:// without SSL)
 python src/unbillicord/server.py
@@ -467,17 +466,17 @@ python src/unbillicord/server.py
 
 ## Configuration Reference
 
-**data/config.json:**
+**data/unbillicord/config.json:**
 ```json
 {
-  "executor_hostname": "localhost",  // Hostname/IP for browser connections
+  "ubc_hostname": "localhost",  // Hostname/IP for browser connections
   // Set to "myserver.local" for hostname
   // Set to "192.168.1.100" for IP address
   // ... other config fields
 }
 ```
 
-The `executor_hostname` value affects:
+The `ubc_hostname` value affects:
 - Browser connection URL (shown in server startup)
 - SSL certificate CN (Common Name)
 - SSL certificate SAN (always includes hostname + localhost + 127.0.0.1)

@@ -1,12 +1,11 @@
 """
-Remote JavaScript Executor Server
+UnBilliCord Server
 
 Combined HTTP + WebSocket server that:
 - Serves static files from htdocs/ (HTTP)
-- Handles /move-downloaded-file and /downloaded-clips endpoints (HTTP POST/GET)
 - WebSocket server for remote JavaScript execution (ws://)
 
-Browser connects once, then Python can orchestrate all downloads/API calls remotely.
+Browser connects once, then Python can drive the page remotely.
 
 fetch(`${CLIENT_CONNECTION_URL}/remote.js?t=`+Date.now()).then(r=>r.text()).then(eval);
 
@@ -20,8 +19,6 @@ import time
 import asyncio
 import logging
 import os
-import re
-import shutil
 import ssl
 import uuid
 
@@ -45,15 +42,14 @@ if not prj_dir:
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(prj_dir) / 'src'))
 
-from snapp import Config
-from unbillicord.config import ExecutorConfig
+from unbillicord.config import UBCConfig
 
-# Setup logging - use executor config for log file path
+# Setup logging - use UnBilliCord config for log file path
 try:
-    executor_config = ExecutorConfig()
-    log_file = executor_config.log_file
+    ubc_config = UBCConfig()
+    log_file = ubc_config.log_file
 except Exception:
-    log_file = 'log/executor.log'
+    log_file = 'log/ubc.log'
 
 log_path = Path(prj_dir) / log_file
 log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,22 +69,8 @@ project_root = Path(prj_dir)
 script_dir = Path(__file__).resolve().parent
 htdocs_dir = script_dir / 'htdocs'
 
-# Load config to get download and destination directories
-try:
-    config = Config()
-    DOWNLOADS_FOLDER = Path(config.dload_dir) if config.dload_dir else Path(os.path.expanduser('~/Downloads'))
-    DEST_DIR = Path(config.clips_dir) if config.clips_dir else Path(os.path.expanduser('~/Downloads'))
-    INCOMING_DIR = DEST_DIR / 'incoming'
-    INCOMING_DIR.mkdir(parents=True, exist_ok=True)
-except Exception as e:
-    logger.warning(f"Could not load config: {e}")
-    DOWNLOADS_FOLDER = Path(os.path.expanduser('~/Downloads'))
-    DEST_DIR = Path(os.path.expanduser('~/Downloads'))
-    INCOMING_DIR = DEST_DIR / 'incoming'
-    INCOMING_DIR.mkdir(parents=True, exist_ok=True)
 
-
-class RemoteExecutor:
+class RemoteUBC:
     """Manages WebSocket connections: browser and Python clients."""
     
     def __init__(self):
@@ -422,7 +404,7 @@ class RemoteExecutor:
             code: JavaScript code to execute on initialization
             
         Example:
-            executor.add_init('''
+            ubc.add_init('''
                 // Set up download observer
                 window.observeDownloads = function() {
                     // ... observer code ...
@@ -445,7 +427,7 @@ class RemoteExecutor:
             async def on_download(data):
                 print(f"Downloaded: {data['filename']}")
             
-            executor.on('download_complete', on_download)
+            ubc.on('download_complete', on_download)
         """
         if event_type not in self.event_handlers:
             self.event_handlers[event_type] = []
@@ -466,10 +448,10 @@ class RemoteExecutor:
             
         Example:
             # Remove specific handler
-            executor.off('download_complete', my_handler)
-            
+            ubc.off('download_complete', my_handler)
+
             # Remove all handlers for event type
-            executor.off('download_complete')
+            ubc.off('download_complete')
         """
         if event_type not in self.event_handlers:
             logger.warning(f"No handlers registered for '{event_type}'")
@@ -504,7 +486,7 @@ class RemoteExecutor:
             Number of event types that had handlers
             
         Example:
-            executor.clear_handlers()
+            ubc.clear_handlers()
         """
         count = len(self.event_handlers)
         self.event_handlers.clear()
@@ -519,7 +501,7 @@ class RemoteExecutor:
             Number of init blocks that were cleared
             
         Example:
-            executor.clear_init()
+            ubc.clear_init()
         """
         count = len(self.init_code)
         self.init_code.clear()
@@ -536,7 +518,7 @@ class RemoteExecutor:
             Tuple of (event_types_cleared, init_blocks_cleared)
             
         Example:
-            executor.reset()
+            ubc.reset()
         """
         events_cleared = self.clear_handlers()
         init_cleared = self.clear_init()
@@ -662,71 +644,6 @@ class RemoteExecutor:
             self.python_clients.discard(ws)
 
 
-async def handle_move_file(request):
-    """Handle /move-downloaded-file endpoint."""
-    try:
-        data = await request.json()
-        filename = data.get('filename')
-        
-        if not filename:
-            return aiohttp.web.json_response(
-                {'success': False, 'error': 'No filename provided'},
-                status=400
-            )
-        
-        # Source: Downloads folder
-        source_file = DOWNLOADS_FOLDER / filename
-        # Destination: incoming folder
-        dest_file = INCOMING_DIR / filename
-        
-        if not source_file.exists():
-            logger.warning(f"File not found: {source_file}")
-            return aiohttp.web.json_response(
-                {'success': False, 'error': f'File not found: {source_file}'},
-                status=404
-            )
-        
-        # Move the file
-        shutil.move(str(source_file), str(dest_file))
-        logger.info(f"Moved: {filename} → {INCOMING_DIR}")
-        
-        return aiohttp.web.json_response(
-            {'success': True, 'destination': str(dest_file)}
-        )
-        
-    except Exception as e:
-        logger.error(f"Error moving file: {e}")
-        return aiohttp.web.json_response(
-            {'success': False, 'error': str(e)},
-            status=500
-        )
-
-
-async def handle_downloaded_clips(request):
-    """Handle /downloaded-clips endpoint."""
-    # Scan download directory recursively for files with _CID<guid>.wav pattern (8-char hex)
-    clip_ids = set()
-    pattern = re.compile(r'_CID([0-9a-f]{8})\.wav$', re.IGNORECASE)
-    
-    try:
-        if DEST_DIR.exists():
-            # Recursively search all subdirectories
-            for file in DEST_DIR.glob('**/*_CID*.wav'):
-                match = pattern.search(file.name)
-                if match:
-                    clip_ids.add(match.group(1).lower())
-        
-        logger.info(f"Sent {len(clip_ids)} downloaded clip IDs (searched recursively)")
-        return aiohttp.web.json_response({'clipIds': list(clip_ids)})
-        
-    except Exception as e:
-        logger.error(f"Error scanning directory: {e}")
-        return aiohttp.web.json_response(
-            {'clipIds': [], 'error': str(e)},
-            status=500
-        )
-
-
 async def handle_websocket(request):
     """Handle WebSocket connections (both /remote and /client)."""
     path = request.path
@@ -736,9 +653,9 @@ async def handle_websocket(request):
     await ws.prepare(request)
     
     if path.endswith('/remote'):
-        await executor.handle_browser_aio(ws)
+        await ubc.handle_browser_aio(ws)
     elif path.endswith('/client'):
-        await executor.handle_python_client_aio(ws)
+        await ubc.handle_python_client_aio(ws)
     else:
         logger.warning(f"Invalid WebSocket path: {path}")
         await ws.close(code=1002, message=b'Invalid path')
@@ -750,11 +667,11 @@ async def handle_cert_pem(request):
     """Serve the raw certificate file for manual installation."""
     assert prj_dir is not None, "PRJ_DIR not set"
     prj_dir_path = Path(prj_dir)
-    cert_file = prj_dir_path / 'data' / 'executor' / 'cert.pem'
-    
+    cert_file = prj_dir_path / 'data' / 'unbillicord' / 'cert.pem'
+
     if not cert_file.exists():
         return aiohttp.web.Response(
-            text="Error: No SSL certificate found. Run: util/gencert.py --executor",
+            text="Error: No SSL certificate found.",
             status=404
         )
     
@@ -765,7 +682,7 @@ async def handle_cert_pem(request):
         text=cert_content,
         content_type='application/x-pem-file',
         headers={
-            'Content-Disposition': 'attachment; filename="snapp-executor.pem"',
+            'Content-Disposition': 'attachment; filename="ubc.pem"',
             'Cache-Control': 'no-store, no-cache, must-revalidate',
             'Access-Control-Allow-Origin': '*'
         }
@@ -779,7 +696,7 @@ async def handle_verify(request):
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Executor Server - Connection Verified</title>
+    <title>UnBilliCord Server - Connection Verified</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -838,21 +755,21 @@ async def handle_verify(request):
         
         <div class="status">
             <strong>Connection Status:</strong> {scheme.upper()} connection established successfully<br>
-            <strong>Server:</strong> Snapp Executor Server<br>
+            <strong>Server:</strong> UnBilliCord Server<br>
             <strong>Endpoint:</strong> {request.url}
         </div>
         
         <div class="info">
             <h3>Next Steps:</h3>
             <ol>
-                <li>Navigate to <strong>https://suno.com</strong> and log in</li>
+                <li>Navigate to the site you want to drive and log in</li>
                 <li>Open the browser console (press <code>F12</code>)</li>
                 <li>Paste and run this command:</li>
             </ol>
             <div class="command">
                 fetch('{CLIENT_CONNECTION_URL}/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
             </div>
-            <p>You should see: <code>✓ Connected to remote executor</code></p>
+            <p>You should see: <code>✓ Connected to UnBilliCord</code></p>
         </div>
         
         <h3>Available Endpoints:</h3>
@@ -903,8 +820,8 @@ async def handle_remote_js(request):
     )
 
 
-# Global executor instance
-executor = RemoteExecutor()
+# Global UBC instance
+ubc = RemoteUBC()
 
 
 async def start_server(
@@ -919,18 +836,15 @@ async def start_server(
         display_url = f"http://localhost:{listen_port}"
     
     logger.info("=" * 60)
-    logger.info("🚀 Remote JavaScript Executor Server")
+    logger.info("🚀 UnBilliCord Server")
     logger.info("=" * 60)
     logger.info(f"Listening on:     {listen_host}:{listen_port}")
     logger.info(f"Client URL:       {display_url}")
     logger.info(f"Serving from:     {htdocs_dir}")
-    logger.info(f"Downloads:        {DOWNLOADS_FOLDER}")
-    logger.info(f"Destination:      {DEST_DIR}")
-    logger.info(f"Incoming:         {INCOMING_DIR}")
     logger.info("")
     logger.info("Paste one of the following into the browser console.")
     logger.info("")
-    logger.info("Connect to executor:")
+    logger.info("Connect a browser:")
     logger.info("-" * 60)
     logger.info(f"fetch('{display_url}/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);")
     logger.info("-" * 60)
@@ -946,8 +860,6 @@ async def start_server(
     
     # Add routes with path prefix support
     prefix = EXEC_PATH_PREFIX
-    app.router.add_post(f'{prefix}/move-downloaded-file', handle_move_file)
-    app.router.add_get(f'{prefix}/downloaded-clips', handle_downloaded_clips)
     app.router.add_get(f'{prefix}/remote', handle_websocket)
     app.router.add_get(f'{prefix}/client', handle_websocket)
     app.router.add_get(f'{prefix}/remote.js', handle_remote_js)  # Dynamic injection
@@ -984,7 +896,7 @@ async def start_server(
     ssl_context = None
     assert prj_dir is not None, "PRJ_DIR not set"
     prj_dir_path = Path(prj_dir)
-    cert_dir = prj_dir_path / 'data' / 'executor'
+    cert_dir = prj_dir_path / 'data' / 'unbillicord'
     cert_file = cert_dir / 'cert.pem'
     key_file = cert_dir / 'key.pem'
     
@@ -1007,33 +919,32 @@ async def start_server(
 
 async def example_usage():
     """
-    Example of how to use the executor.
-    
-    Note: This is infrastructure only. Business logic (auth, API calls, throttling)
-    is now in ExecutorClient.api_call() and SunoAPI.
+    Example of how to use UnBilliCord.
+
+    Infrastructure only — application logic builds on top of exec()/navigate().
     """
-    
+
     # Wait for browser to connect
     print("\nWaiting for browser connection...")
-    while not executor.is_connected():
+    while not ubc.is_connected():
         await asyncio.sleep(0.5)
-    
+
     print("✓ Browser connected!\n")
-    
-    # Navigate to Suno
-    print("🧭 Navigating to Suno...")
-    await executor.navigate('https://suno.com')
+
+    # Navigate to a page
+    print("🧭 Navigating...")
+    await ubc.navigate('https://example.com')
     await asyncio.sleep(2)
-    
-    # Low-level JavaScript execution (infrastructure only)
-    result = await executor.exec("return document.title")
+
+    # Low-level JavaScript execution
+    result = await ubc.exec("return document.title")
     print(f"Page title: {result}")
 
 
-if __name__ == '__main__':
-    # Start server
-    # Uncomment example_usage() to see it in action
+def main():
+    """Console-script entrypoint (the `ubc` command)."""
     asyncio.run(start_server())
-    
-    # To use with example:
-    # asyncio.run(asyncio.gather(start_server(), example_usage()))
+
+
+if __name__ == '__main__':
+    main()

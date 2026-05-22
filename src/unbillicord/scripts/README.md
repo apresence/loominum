@@ -7,7 +7,7 @@ These templates are used to generate platform-specific certificate installation 
 The following placeholders are replaced at runtime:
 
 - `{{CERTIFICATE}}` - Replaced with the contents of `data/unbillicord/cert.pem`
-- `{{CLIENT_URL}}` - Replaced with the executor's client connection URL (from config)
+- `{{CLIENT_URL}}` - Replaced with UnBilliCord's client connection URL (from config)
 
 ## Files
 

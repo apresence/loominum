@@ -1,8 +1,8 @@
-# Executor Server Endpoints
+# UnBilliCord Server Endpoints
 
 ## Browser Connection
 
-Connect browser to executor server:
+Connect a browser to the UnBilliCord server:
 ```javascript
 fetch('https://tau:7993/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
 ```
@@ -46,8 +46,6 @@ Then import in browser:
 - `/cert.pem` - Raw certificate file for manual installation
 - `/remote` - WebSocket endpoint for browser
 - `/client` - WebSocket endpoint for Python clients
-- `/move-downloaded-file` - POST endpoint for file operations
-- `/downloaded-clips` - GET endpoint for clip status
 
 ## Notes
 

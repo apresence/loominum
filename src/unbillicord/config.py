@@ -1,5 +1,5 @@
 """
-Configuration management for executor server.
+Configuration management for the UnBilliCord server.
 
 Loads settings from data/unbillicord/config.json using $PRJ_DIR environment variable.
 """
@@ -11,8 +11,8 @@ import typing as tp  # type: ignore[unusedImport]
 from pathlib import Path
 
 
-class ExecutorConfig:
-    """Executor server configuration loaded from data/unbillicord/config.json."""
+class UBCConfig:
+    """UnBilliCord server configuration loaded from data/unbillicord/config.json."""
     
     def __init__(self, config_path: tp.Optional[Path] = None):
         """
@@ -32,13 +32,13 @@ class ExecutorConfig:
                     "PRJ_DIR environment variable not set. "
                     "Please run: . .init"
                 )
-            config_path = Path(prj_dir) / 'data' / 'executor' / 'config.json'
+            config_path = Path(prj_dir) / 'data' / 'unbillicord' / 'config.json'
         
         self.config_path = Path(config_path)
         
         if not self.config_path.exists():
             raise FileNotFoundError(
-                f"Executor config not found: {self.config_path}\n"
+                f"UnBilliCord config not found: {self.config_path}\n"
                 f"Expected location: $PRJ_DIR/data/unbillicord/config.json"
             )
         
@@ -52,7 +52,7 @@ class ExecutorConfig:
         
         Examples:
             - 'https://0.0.0.0:7993' (bind all interfaces on port 7993, SSL)
-            - 'http://127.0.0.1:7993/executor' (localhost on port 7993, path /executor)
+            - 'http://127.0.0.1:7993/ubc' (localhost on port 7993, path /ubc)
         
         Raises:
             KeyError: If server_url not configured
@@ -70,7 +70,7 @@ class ExecutorConfig:
         
         Examples:
             - 'https://tau:7993' (client connects to hostname 'tau')
-            - 'https://192.168.1.100:7993/executor' (client connects via IP + path)
+            - 'https://192.168.1.100:7993/ubc' (client connects via IP + path)
         
         Raises:
             KeyError: If client_url not configured
@@ -104,7 +104,7 @@ class ExecutorConfig:
     @property
     def log_file(self) -> str:
         """Log file path (relative to project root)."""
-        return self._data.get('log_file', 'log/executor.log')
+        return self._data.get('log_file', 'log/ubc.log')
     
     def get(self, key: str, default: tp.Any = None) -> tp.Any:
         """Get raw config value."""

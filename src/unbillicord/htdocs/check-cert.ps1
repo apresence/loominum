@@ -1,5 +1,5 @@
-# Check if Snapp Executor certificate is installed
-Write-Host "Checking for Snapp Executor certificate..." -ForegroundColor Cyan
+# Check if UnBilliCord certificate is installed
+Write-Host "Checking for UnBilliCord certificate..." -ForegroundColor Cyan
 Write-Host ""
 
 # Check LocalMachine\Root store

@@ -1,5 +1,5 @@
 """
-Python client for connecting to remote executor server.
+Python client for connecting to a remote UnBilliCord server.
 """
 
 import json
@@ -13,9 +13,9 @@ from pathlib import Path
 from datetime import datetime
 
 try:
-    from .config import ExecutorConfig
+    from .config import UBCConfig
 except ImportError:
-    from unbillicord.config import ExecutorConfig
+    from unbillicord.config import UBCConfig
 
 logger = logging.getLogger(__name__)
 
@@ -89,16 +89,16 @@ _CONSOLE_TAP_JS: str = r"""
 """.strip()
 
 
-class ExecutorClient:
-    """Client for connecting to remote executor server."""
+class UBCClient:
+    """Client for connecting to a remote UnBilliCord server."""
     
     def __init__(self, url: tp.Optional[str] = None, db: tp.Optional[tp.Any] = None, ssl_verify: bool = True,
                  cert_path: tp.Optional[str] = None, key_path: tp.Optional[str] = None):
         """
-        Initialize executor client.
-        
+        Initialize UnBilliCord client.
+
         Args:
-            url: WebSocket URL to connect to. If None, uses client_url from executor config.
+            url: WebSocket URL to connect to. If None, uses client_url from UnBilliCord config.
                  Supports formats:
                  - 'https://host/path' (converts to wss://host/path/client)
                  - 'http://host:port/path' (converts to ws://host:port/path/client)
@@ -109,7 +109,7 @@ class ExecutorClient:
             key_path: Path to client private key PEM file (optional, defaults to config location)
         """
         if url is None:
-            config = ExecutorConfig()
+            config = UBCConfig()
             url = config.client_url
             self._cert_path = cert_path or str(Path(config.config_path.parent) / 'cert.pem')
             self._key_path = key_path or str(Path(config.config_path.parent) / 'key.pem')
@@ -155,11 +155,11 @@ class ExecutorClient:
         self.max_consecutive_429s: int = 5
     
     async def connect(self):
-        """Connect to the executor server."""
+        """Connect to the UnBilliCord server."""
         try:
             import ssl as sslmod
             ssl_ctx = None
-            print(f"Connecting to executor server at {self.ws_url} with SSL verify={self.ssl_verify}...")
+            print(f"Connecting to UnBilliCord server at {self.ws_url} with SSL verify={self.ssl_verify}...")
             if self.ws_url.startswith('wss://'):
                 ssl_ctx = sslmod.create_default_context()
                 if not self.ssl_verify:
@@ -254,7 +254,7 @@ class ExecutorClient:
     
     async def is_browser_connected(self) -> bool:
         """
-        Check if browser extension is connected to executor server.
+        Check if a browser is connected to the UnBilliCord server.
         
         Returns:
             True if browser is connected, False otherwise
@@ -325,8 +325,8 @@ class ExecutorClient:
         """
         Execute API call with server-level throttling and logging.
 
-        All Suno API calls should use this instead of exec() directly.
-        Throttle timing is enforced by the executor server (shared across
+        All throttled API calls should use this instead of exec() directly.
+        Throttle timing is enforced by the UnBilliCord server (shared across
         all connected clients). This method handles logging and 429 safety.
 
         Args:
@@ -452,7 +452,7 @@ class ExecutorClient:
 
         Intercepts console.log/info/warn/error/debug/trace and forwards
         payloads as 'console' events via window._remote.emit().
-        Register a handler with: executor.on('console', my_handler)
+        Register a handler with: client.on('console', my_handler)
         """
         js: str = _CONSOLE_TAP_JS
         await self.add_init(js)

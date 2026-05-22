@@ -1,4 +1,4 @@
-# Remote JavaScript Executor
+# UnBilliCord
 
 Browser automation system with bidirectional event-driven communication.
 
@@ -44,7 +44,7 @@ Browser automation system with bidirectional event-driven communication.
 python src/unbillicord/server.py
 ```
 
-Server runs on `http://localhost:7773` (configurable via `data/config.json`)
+Server runs on `http://localhost:7773` (configurable via `data/unbillicord/config.json`)
 
 ### Connect Browser
 
@@ -57,9 +57,9 @@ fetch('http://localhost:7773/remote.js?t='+Date.now()).then(r=>r.text()).then(ev
 ### Execute Code (Python)
 
 ```python
-from unbillicord import ExecutorClient
+from unbillicord import UBCClient
 
-client = ExecutorClient()
+client = UBCClient()
 await client.connect()
 
 # Execute JavaScript
@@ -77,10 +77,10 @@ See [EVENTS.md](EVENTS.md) for full documentation.
 ### Register Browser Observers (Python)
 
 ```python
-from unbillicord.server import executor
+from unbillicord.server import ubc
 
 # This code runs in browser on connect/reconnect
-executor.add_init('''
+ubc.add_init('''
     // Watch for new download links
     const observer = new MutationObserver((mutations) => {
         // ... detect downloads ...
@@ -99,7 +99,7 @@ async def on_download_ready(data):
     print(f"Download: {data['filename']}")
     # Process...
 
-executor.on('download_ready', on_download_ready)
+ubc.on('download_ready', on_download_ready)
 ```
 
 ### State Persistence
@@ -114,45 +114,45 @@ This ensures clean state after restarts.
 
 ## API
 
-### Server (RemoteExecutor)
+### Server (RemoteUBC)
 
 **Event Handlers:**
 ```python
-executor.on(event_type: str, handler: Callable)
+ubc.on(event_type: str, handler: Callable)
     # Register event handler (async function)
 
-executor.off(event_type: str, handler: Callable = None)
+ubc.off(event_type: str, handler: Callable = None)
     # Remove specific handler or all handlers for event type
     # Returns True if removed, False if not found
 
-executor.clear_handlers() -> int
+ubc.clear_handlers() -> int
     # Clear all event handlers
     # Returns number of event types cleared
 
-executor.reset() -> tuple[int, int]
+ubc.reset() -> tuple[int, int]
     # Clear both handlers and init code
     # Returns (events_cleared, init_blocks_cleared)
 ```
 
 **Initialization Code:**
 ```python
-executor.add_init(code: str)
+ubc.add_init(code: str)
     # Register initialization code for browser
 
-executor.clear_init() -> int
+ubc.clear_init() -> int
     # Clear all initialization code
     # Returns number of blocks cleared
 ```
 
 **Execution:**
 ```python
-await executor.exec(code: str, timeout: float = 30.0)
+await ubc.exec(code: str, timeout: float = 30.0)
     # Execute JavaScript, return result
 
-await executor.navigate(url: str)
+await ubc.navigate(url: str)
     # Navigate browser to URL
 
-executor.is_connected() -> bool
+ubc.is_connected() -> bool
     # Check browser connection status
 ```
 
@@ -166,16 +166,16 @@ executor.is_connected() -> bool
    - Browser cleans up old state (observers, listeners, intervals)
 
 2. ⚠️ **Must be re-registered** (in your startup code):
-   - Event handlers (`executor.on()`)
-   - Initialization code (`executor.add_init()`)
+   - Event handlers (`ubc.on()`)
+   - Initialization code (`ubc.add_init()`)
 
 **Pattern for restart-safe setup:**
 ```python
 # In your main application startup (e.g., __main__ or setup function)
-from unbillicord.server import executor
+from unbillicord.server import ubc
 
 # Register init code (clears on restart, must re-register)
-executor.add_init('''
+ubc.add_init('''
     // Browser-side setup
     window.observeDownloads = function() { ... };
     window.observeDownloads();
@@ -185,25 +185,25 @@ executor.add_init('''
 async def on_download(data):
     print(f"Download: {data['filename']}")
 
-executor.on('download_ready', on_download)
+ubc.on('download_ready', on_download)
 ```
 
 **Don't do this** (handlers lost on restart):
 ```python
 # ❌ In a one-off script
-executor.on('event', my_handler)  # Lost when script exits or server restarts
+ubc.on('event', my_handler)  # Lost when script exits or server restarts
 ```
 
 **Manual cleanup during development:**
 ```python
 # Remove specific handler
-executor.off('download_ready', my_handler)
+ubc.off('download_ready', my_handler)
 
 # Remove all handlers for event
-executor.off('download_ready')
+ubc.off('download_ready')
 
 # Clear everything
-executor.reset()
+ubc.reset()
 ```
 
 ### Browser (window._remote)
@@ -223,15 +223,15 @@ window._remote.cleanup()
     // Manually trigger cleanup (testing/debug)
 ```
 
-### Client (ExecutorClient)
+### Client (UBCClient)
 
 ```python
-client = ExecutorClient(url=None, db=None)
+client = UBCClient(url=None, db=None)
 await client.connect()
 await client.close()
 
 # Context manager (preferred)
-async with ExecutorClient() as client:
+async with UBCClient() as client:
     result = await client.exec('document.title')
 ```
 
@@ -290,13 +290,15 @@ Browser JS calls window._remote.emit('event', data)
 
 ## Configuration
 
-Edit `data/config.json`:
+Edit `data/unbillicord/config.json`:
 
 ```json
 {
-    "exec_listen_host": "localhost",
-    "exec_listen_port": 7773,
-    "client_connection_url": "http://localhost:7773"
+  "verbose": false,
+  "log_file": "log/ubc.log",
+  "server_url": "http://127.0.0.1:7773",
+  "client_url": "http://127.0.0.1:7773",
+  "cert_sans": null
 }
 ```
 
@@ -313,7 +315,7 @@ Edit `data/config.json`:
 - Check browser console for errors
 
 **Events not firing**
-- Verify handler is registered: `executor.event_handlers`
+- Verify handler is registered: `ubc.event_handlers`
 - Check init code was sent: look for "initialization" in server logs
 - Verify browser state: `window._remote` should exist
 
@@ -322,5 +324,5 @@ Edit `data/config.json`:
 - Check cleanup runs: look for "Cleaned up browser state" in console
 
 **Server restart loses handlers**
-- Handler registration (`executor.on()`) must happen before browser connects
+- Handler registration (`ubc.on()`) must happen before browser connects
 - Put registration in your main application startup, not ad-hoc scripts

@@ -1,6 +1,6 @@
 {
   "verbose": false,
-  "log_file": "log/executor.log",
+  "log_file": "log/ubc.log",
   "server_url": "http://127.0.0.1:7773",
   "client_url": "http://127.0.0.1:7773",
   "cert_sans": null

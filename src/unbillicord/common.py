@@ -14,10 +14,10 @@ if not prj_dir:
     )
 sys.path.insert(0, str(Path(prj_dir) / 'src'))
 
-from unbillicord.config import ExecutorConfig
+from unbillicord.config import UBCConfig
 
-# Load executor configuration
-config = ExecutorConfig()
+# Load UnBilliCord configuration
+config = UBCConfig()
 
 # Parse server_url for binding
 server_url_parsed = urlparse(config.server_url)

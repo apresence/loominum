@@ -4,41 +4,35 @@ Read this first if you're picking this project up.
 
 ## What this is
 
-`unbillicord` is being extracted from snapp into a standalone library. The
-goal is a publishable Python package that does the heavy lifting of
-driving a live browser from Python with bidirectional async events —
-across two transports — so application code doesn't have to.
+`unbillicord` is a standalone Python library. The goal is a publishable Python
+package that does the heavy lifting of driving a live browser from Python with
+bidirectional async events — across two transports — so application code
+doesn't have to.
 
 Read `README.md` for the user-facing pitch. This file is the developer-facing
 plan.
 
-## Where the code came from
+## Status
 
-`src/unbillicord/` was copied verbatim from `snapp/src/unbillicord/` on 2026-05-22.
-Cleanup so far:
+The library is a site-agnostic primitive: the public API surface carries no
+site-specific code, and `data/unbillicord/config.json` ships localhost
+defaults (port 7773, TLS off). The JS-injection transport works today. The CDP
+sidecar transport is not yet built — that's the next big piece (see below).
 
-- `data/unbillicord/config.json` — replaced snapp-specific values with
-  localhost defaults, TLS off.
-- `__pycache__/` removed.
-- Cert artefacts (`*.pem.bak`) not copied; cert install scripts retained.
+Still to do before this is comfortable as a library:
 
-Cleanup **not** done yet (low risk, defer until you start touching code):
-
-- `src/unbillicord/README.md` still uses some snapp examples (download-monitor
-  patterns, clip IDs). Replace with site-agnostic examples.
-- `common.py` requires `$PRJ_DIR`. Fine for `snapp`'s monorepo style, awkward
-  for a library. Consider supporting an explicit config path or a normal
-  config-discovery (cwd, `~/.config/executor/`, env).
+- `common.py` requires `$PRJ_DIR`. Awkward for a library — consider supporting
+  an explicit config path or conventional config-discovery (cwd,
+  `~/.config/unbillicord/`, env).
 - `config.py` raises if `data/unbillicord/config.json` is missing. A library
-  should ship sensible defaults and only require config for non-default
-  setups.
+  should ship sensible defaults and only require config for non-default setups.
 
 ## Architecture — current (JS injection)
 
 ```
 Browser tab                         Python host
 ┌──────────────┐                   ┌────────────────────┐
-│  Page        │                   │  RemoteExecutor    │
+│  Page        │                   │  RemoteUBC         │
 │   ⇣          │   /remote (WSS)   │    (server.py)     │
 │  remote.js   ◄═══════════════════►                    │
 │   ⇡ emit()   │                   │     ⇣              │
@@ -46,7 +40,7 @@ Browser tab                         Python host
 └──────────────┘                   │     ⇡              │
                                    │   /client (WSS)    │
                                    │     ⇣              │
-                                   │  ExecutorClient ◄──┼─ your code
+                                   │  UBCClient ◄───────┼─ your code
                                    │   (client.py)      │
                                    └────────────────────┘
 ```
@@ -70,8 +64,8 @@ Browser (--remote-debugging-port=9222)
           │  same WS protocol the page would speak in JS-injection mode
           ⇡
 ┌────────────────────┐
-│  RemoteExecutor    │  ← unchanged
-│  ExecutorClient    │  ← unchanged
+│  RemoteUBC         │  ← unchanged
+│  UBCClient         │  ← unchanged
 └────────────────────┘
 ```
 
@@ -81,7 +75,7 @@ server. From the server's perspective nothing changes. The sidecar:
 1. Discovers the target tab via `GET http://localhost:9222/json` (filter
    by URL substring).
 2. Opens a CDP WebSocket to the tab's `webSocketDebuggerUrl`.
-3. Registers a CDP binding (e.g. `executorSend`) that the page can call —
+3. Registers a CDP binding (e.g. `ubcSend`) that the page can call —
    payload arrives as `Runtime.bindingCalled`.
 4. Injects `remote.js` via `Page.addScriptToEvaluateOnNewDocument` so it
    survives navigation.
@@ -104,19 +98,19 @@ Both transports must expose the same surface:
 **Server side (Python):**
 
 ```python
-executor.add_init(js: str)
-executor.on(event: str, handler: Awaitable)
-executor.off(event: str, handler=None)
-executor.exec(code: str, timeout: float = 30.0) -> Any
-executor.navigate(url: str)
-executor.is_connected() -> bool
-executor.reset()
+ubc.add_init(js: str)
+ubc.on(event: str, handler: Awaitable)
+ubc.off(event: str, handler=None)
+ubc.exec(code: str, timeout: float = 30.0) -> Any
+ubc.navigate(url: str)
+ubc.is_connected() -> bool
+ubc.reset()
 ```
 
 **Client side (Python, talking to a remote server over /client WSS):**
 
 ```python
-ExecutorClient(url=None)
+UBCClient(url=None)
 client.exec / navigate / on / off / add_init / enable_console_tap
 ```
 
@@ -136,20 +130,19 @@ between transports by config change alone.
 
 ## Suggested phasing
 
-1. **Phase 0** — light cleanup pass on what's here. Remove snapp examples
-   from `src/unbillicord/README.md`, decouple config from `$PRJ_DIR` (allow
-   explicit path or stdlib `appdirs`-style default). Smoke-test the
-   carried-over `tests/test_executor.py`.
+1. **Phase 0** — light cleanup. The initial naming/cleanup pass is **done**.
+   Remaining: decouple config from `$PRJ_DIR` (allow an explicit path or
+   stdlib `appdirs`-style default).
 
-2. **Phase 1** — package skeleton. Add `pyproject.toml`, console-script
-   entrypoint (`unbillicord` → `executor.server:main`), pin runtime deps
+2. **Phase 1** — package skeleton. Add `pyproject.toml`, a console-script
+   entrypoint (`ubc` → `unbillicord.server:main`), pin runtime deps
    (`aiohttp` etc.).
 
 3. **Phase 2** — CDP sidecar. New module, e.g. `src/unbillicord/cdp.py`:
    `class CDPTransport` with `start(target_url, page_script)`,
    `evaluate(js)`, `dispatch_key(...)`. Wire as an alternate front-end to
-   `RemoteExecutor` — sidecar opens an outbound WSS to the existing
-   `/remote` endpoint, presenting itself as a normal browser.
+   `RemoteUBC` — sidecar opens an outbound WSS to the existing `/remote`
+   endpoint, presenting itself as a normal browser.
 
 4. **Phase 3** — docs, examples, release. README rewrite around the two
    transports as first-class concepts. Examples for each.
@@ -164,19 +157,17 @@ between transports by config change alone.
 
 ## Open questions to flag to Chris
 
-- Package name on PyPI (`unbillicord` is taken; bikeshed later).
-- License (MIT? Apache-2.0?).
-- Whether to support a `.init`-style sourceable env file like sibling
-  projects, or a more conventional config-discovery.
-- Snapp will keep its own embedded copy until the library is published —
-  do not delete `snapp/src/unbillicord/` without his sign-off.
+- PyPI package name. `unbillicord` is currently **available** on PyPI
+  (no published package by that name) — claim it or pick another.
+- Whether to support a `.init`-style sourceable env file, or a more
+  conventional config-discovery.
+
+License is decided: **Apache-2.0** (see `LICENSE`).
 
 ## Pointers
 
-- snapp executor source (the parent): `/d/pm/mounts/global/prj/dev/snapp/src/unbillicord/`
-- snapp-specific session memory:
-  `~/.claude/projects/C--Users-apres/memory/history/session_20260329_snapp_executor.md`
-- webbie CDP reference: `gigaro/cortex-docs` repo, `mvp-2/cortex-ex/services/webbie/relay.js`
+- webbie CDP reference: `gigaro/cortex-docs` repo,
+  `mvp-2/cortex-ex/services/webbie/relay.js`
   (Node, useful for CDP patterns; do NOT copy page.js).
 - Multi-tenant OAuth (out of scope but worth knowing about):
   `gigaro/cortex-docs`, `webbie-mcp/multi-tenant-gateway-spec.md`.

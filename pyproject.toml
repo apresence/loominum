@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "unbillicord"
+version = "0.1.0"
+description = "Drive and observe a live browser session from Python, with bidirectional async events."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Christopher M. Mapes" },
+]
+keywords = ["browser-automation", "websocket", "chrome-devtools-protocol", "scraping"]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "aiohttp>=3.9",
+    "websockets>=12",
+]
+
+[project.scripts]
+ubc = "unbillicord.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/unbillicord"]
