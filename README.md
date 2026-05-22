@@ -11,11 +11,12 @@ page; the page emits events back.
    flags, but bootstrap is manual and injection dies on navigation unless
    re-pasted.
 
-2. **CDP sidecar mode** (planned — see [HANDOFF.md](HANDOFF.md)) — a Python
-   sidecar speaks Chrome DevTools Protocol to a CDP-enabled browser. Gives
-   nav-surviving injection (`Page.addScriptToEvaluateOnNewDocument`) and
-   CAPTCHA-safe trusted-event dispatch (`Input.dispatchKeyEvent`). Requires
-   the browser launched with `--remote-debugging-port`.
+2. **CDP sidecar mode** (working today, via the `ubc-cdp` console script) —
+   a Python sidecar speaks Chrome DevTools Protocol to a CDP-enabled browser
+   and impersonates a browser to the UnBilliCord server. Gives nav-surviving
+   injection (`Page.addScriptToEvaluateOnNewDocument`) and CAPTCHA-safe
+   trusted-event dispatch (`Input.dispatchKeyEvent` / `dispatchMouseEvent`).
+   Requires the browser launched with `--remote-debugging-port`.
 
 Same `ubc.exec / on / add_init / navigate` API across both transports.
 
@@ -36,7 +37,9 @@ Same `ubc.exec / on / add_init / navigate` API across both transports.
 - `src/unbillicord/EVENTS.md` — event-system documentation.
 - `src/unbillicord/NGINX.md` — deployment notes for fronting the server with
   nginx (TLS termination, path-based routing).
-- CDP sidecar — not yet built. Next-agent task; see HANDOFF.md.
+- CDP sidecar — implemented in `src/unbillicord/cdp.py`; run via the
+  `ubc-cdp` console script. Bridge logic covered by an automated fake-CDP
+  test harness in `tests/test_cdp.py`.
 
 ## Layout
 
@@ -115,6 +118,50 @@ asyncio.run(main())
 ```
 
 See `src/unbillicord/README.md` for the full API.
+
+## Quick start (CDP sidecar mode)
+
+Launch a Chromium-based browser with remote debugging enabled:
+
+```bash
+chromium --remote-debugging-port=9222
+```
+
+Then start the server and the sidecar (it discovers the target tab,
+auto-injects the page bridge, and impersonates a browser to the server):
+
+```bash
+cd $PRJ_DIR
+PYTHONPATH=src python -m unbillicord.server &
+ubc-cdp --target-url example.com
+```
+
+From Python, the API is identical to JS-injection mode:
+
+```python
+import asyncio
+from unbillicord import UBCClient
+
+async def main():
+    async with UBCClient() as client:
+        print(await client.exec('document.title'))
+
+asyncio.run(main())
+```
+
+The CDP transport survives page navigations (init code re-runs on every new
+document) and can dispatch trusted input via `CDPTransport.dispatch_key`,
+`type_text`, and `click`.
+
+## Testing
+
+```bash
+pytest tests/test_cdp.py
+```
+
+Covers the bridge with a fake CDP browser (no real Chrome required). A real-
+browser scenario auto-runs when `localhost:9222` is reachable and otherwise
+skips.
 
 ## License
 

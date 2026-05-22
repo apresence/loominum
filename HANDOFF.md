@@ -16,14 +16,17 @@ plan.
 
 The library is a site-agnostic primitive: the public API surface carries no
 site-specific code, and `data/unbillicord/config.json` ships localhost
-defaults (port 7773, TLS off). The JS-injection transport works today. The CDP
-sidecar transport is not yet built — that's the next big piece (see below).
+defaults (port 7773, TLS off). **Both transports work today:** the JS-injection
+bootstrap from day one, and the CDP sidecar (`src/unbillicord/cdp.py`, the
+`ubc-cdp` console script). Bridge logic is covered by an automated fake-CDP
+test harness in `tests/test_cdp.py`.
 
 Still to do before this is comfortable as a library:
 
 - `common.py` requires `$PRJ_DIR`. Awkward for a library — consider supporting
   an explicit config path or conventional config-discovery (cwd,
-  `~/.config/unbillicord/`, env).
+  `~/.config/unbillicord/`, env). The `ubc-cdp` sidecar inherits the same
+  requirement (the server it talks to imports the gated machinery).
 - `config.py` raises if `data/unbillicord/config.json` is missing. A library
   should ship sensible defaults and only require config for non-default setups.
 
@@ -130,22 +133,24 @@ between transports by config change alone.
 
 ## Suggested phasing
 
-1. **Phase 0** — light cleanup. The initial naming/cleanup pass is **done**.
-   Remaining: decouple config from `$PRJ_DIR` (allow an explicit path or
+1. **Phase 0** — light cleanup. Initial naming/cleanup pass **done**.
+   Remaining: decouple config from `$PRJ_DIR` (allow an explicit path or a
    stdlib `appdirs`-style default).
 
-2. **Phase 1** — package skeleton. Add `pyproject.toml`, a console-script
-   entrypoint (`ubc` → `unbillicord.server:main`), pin runtime deps
-   (`aiohttp` etc.).
+2. **Phase 1** — package skeleton. **Done**: `pyproject.toml` (hatchling),
+   `ubc` console script, runtime deps pinned (`aiohttp>=3.9`,
+   `websockets>=12`), Apache-2.0 `LICENSE`.
 
-3. **Phase 2** — CDP sidecar. New module, e.g. `src/unbillicord/cdp.py`:
-   `class CDPTransport` with `start(target_url, page_script)`,
-   `evaluate(js)`, `dispatch_key(...)`. Wire as an alternate front-end to
-   `RemoteUBC` — sidecar opens an outbound WSS to the existing `/remote`
-   endpoint, presenting itself as a normal browser.
+3. **Phase 2** — CDP sidecar. **Done**: `src/unbillicord/cdp.py` with
+   `CDPClient` (JSON-RPC) and `CDPTransport(server_url, debug_url, target_url)`
+   exposing `evaluate`, `navigate`, `dispatch_key`, `type_text`, and `click`.
+   The sidecar opens an outbound WSS to the existing `/remote` endpoint,
+   impersonating a browser; `server.py` and `client.py` are untouched.
+   `ubc-cdp` console script and `tests/test_cdp.py` (fake-CDP e2e + a
+   skip-on-no-browser real e2e against `localhost:9222`).
 
-4. **Phase 3** — docs, examples, release. README rewrite around the two
-   transports as first-class concepts. Examples for each.
+4. **Phase 3** — docs, examples, release. Examples for each transport;
+   tag `0.1.0` and publish to PyPI once the name is claimed.
 
 ## Out of scope (deliberately)
 

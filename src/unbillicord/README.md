@@ -326,3 +326,77 @@ Edit `data/unbillicord/config.json`:
 **Server restart loses handlers**
 - Handler registration (`ubc.on()`) must happen before browser connects
 - Put registration in your main application startup, not ad-hoc scripts
+
+## CDP transport (sidecar mode)
+
+The `ubc-cdp` sidecar bridges a CDP-enabled browser to a running UnBilliCord
+server. From `ubc` and `UBCClient`'s perspective nothing changes — the server
+just sees "a browser" connected on `/remote`. Under the hood the sidecar
+relays between Chrome DevTools Protocol on one side and the server's
+WebSocket on the other.
+
+### Why use it
+
+- **Survives navigation.** The page bridge is registered via
+  `Page.addScriptToEvaluateOnNewDocument`, so it re-injects on every new
+  document instead of dying on page nav (as the JS-injection bootstrap does).
+- **Trusted input.** `dispatch_key`, `type_text`, and `click` go through
+  `Input.*` CDP commands, which produce trusted events — useful for forms,
+  CAPTCHA, and anything that distinguishes synthetic from real input.
+- **No paste-bootstrap.** Start the sidecar against a tab and you're attached.
+
+### Usage
+
+1. Launch the browser with remote debugging:
+
+   ```bash
+   chromium --remote-debugging-port=9222
+   ```
+
+2. Start the server (in another shell):
+
+   ```bash
+   PYTHONPATH=src python -m unbillicord.server
+   ```
+
+3. Start the sidecar against a target tab:
+
+   ```bash
+   ubc-cdp --target-url example.com
+   ```
+
+   `--target-url` is an optional substring filter (first matching `type=page`
+   target wins). Add `--server-url http://host:port` to override the server URL.
+
+4. Use `UBCClient` exactly as in JS-injection mode.
+
+### Python API
+
+```python
+from unbillicord import CDPTransport
+
+t = CDPTransport(
+    server_url="http://127.0.0.1:7773",
+    debug_url="http://localhost:9222",
+    target_url="example.com",
+)
+await t.start()           # discover, attach, connect to server, announce ready
+await t.evaluate("return document.title")
+await t.dispatch_key("Enter")
+await t.type_text("hello")
+await t.click(120, 240)
+await t.run_forever()     # relay until the server connection closes
+```
+
+### Testing the bridge
+
+`tests/test_cdp.py` ships an automated fake-CDP browser and exercises the
+full bridge (init injection, exec round-trip, page→client events, navigate)
+without needing a real browser:
+
+```bash
+pytest tests/test_cdp.py
+```
+
+The same file includes `test_real_browser_e2e`, which auto-runs when
+`localhost:9222` is reachable and skips otherwise.
