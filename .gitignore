@@ -1,0 +1,24 @@
+# Local-only dev metadata (gitea config, bare-repo notes, etc.)
+.local/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Runtime data — keep config.json template tracked, ignore generated state
+data/executor/*.pem
+data/executor/*.pem.bak
+data/executor/pids/
+log/
+
+# OAuth + secrets, in case a transport later persists tokens
+.oauth-tokens.json
+
+# Misc
+*.bak
+*.swp
+.DS_Store
