@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 ubc = "unbillicord.server:main"
+ubc-cdp = "unbillicord.cdp:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/unbillicord"]
