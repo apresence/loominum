@@ -138,7 +138,8 @@ class LumClient:
         try:
             import ssl as sslmod
             ssl_ctx = None
-            print(f"Connecting to Loominum server at {self.ws_url} with SSL verify={self.ssl_verify}...")
+            logger.info("Connecting to Loominum server at %s with SSL verify=%s",
+                        self.ws_url, self.ssl_verify)
             if self.ws_url.startswith('wss://'):
                 ssl_ctx = sslmod.create_default_context()
                 if not self.ssl_verify:
@@ -148,17 +149,18 @@ class LumClient:
                 if self._cert_path and self._key_path:
                     try:
                         ssl_ctx.load_cert_chain(certfile=self._cert_path, keyfile=self._key_path)
-                        print(f"✓ Loaded client cert: {self._cert_path}, key: {self._key_path}")
+                        logger.info("Loaded client cert: %s, key: %s",
+                                    self._cert_path, self._key_path)
                     except Exception as cert_exc:
-                        print(f"⚠️ Failed to load client cert/key: {cert_exc}")
+                        logger.warning("Failed to load client cert/key: %s", cert_exc)
                 # Load CA cert for trust
                 try:
                     ssl_ctx.load_verify_locations(cafile=self._cert_path)
-                    print(f"✓ Loaded CA cert for trust: {self._cert_path}")
+                    logger.info("Loaded CA cert for trust: %s", self._cert_path)
                 except Exception as ca_exc:
-                    print(f"⚠️ Failed to load CA cert for trust: {ca_exc}")
+                    logger.warning("Failed to load CA cert for trust: %s", ca_exc)
             self.ws = await websockets.connect(self.ws_url, ssl=ssl_ctx)
-            print(f"✓ WebSocket connected to {self.ws_url}")
+            logger.info("WebSocket connected to %s", self.ws_url)
             #Start message handler
             asyncio.create_task(self._handle_messages())
             # Give the connection a moment to stabilize and verify it's working
@@ -167,16 +169,16 @@ class LumClient:
             await self.ws.ping()
             self.connected = True
         except Exception as e:
-            print(f"❌ Failed to connect: {e}")
+            logger.error("Failed to connect: %s", e)
             raise
-    
+
     async def _handle_messages(self):
         """Handle incoming messages from server."""
         assert self.ws is not None, "WebSocket connection not established"
         try:
             async for message in self.ws:
                 data = json.loads(message)
-                
+
                 if data['type'] == 'result':
                     call_id = data['id']
                     if call_id in self.pending_calls:
@@ -192,12 +194,12 @@ class LumClient:
                     event_data: dict = data.get('data', {})
                     if event_type:
                         asyncio.create_task(self._dispatch_event(event_type, event_data))
-        
+
         except websockets.exceptions.ConnectionClosed as e:
-            print(f"⚠️  WebSocket connection closed: {e}")
+            logger.warning("WebSocket connection closed: %s", e)
             self.connected = False
         except Exception as e:
-            print(f"❌ Error in message handler: {e}")
+            logger.error("Error in message handler: %s", e)
             self.connected = False
     
     async def exec(self, code: str, timeout: float = 30.0) -> tp.Any:

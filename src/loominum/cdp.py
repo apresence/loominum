@@ -261,7 +261,7 @@ class CDPTransport:
         self.verify_ssl = verify_ssl
         self.cdp: tp.Optional[CDPClient] = None
         self._server_ws: tp.Optional[tp.Any] = None
-        self._init_script_id: tp.Optional[str] = None
+        self._init_script_ids: tp.List[str] = []
 
     async def start(self) -> None:
         """Discover the tab, attach over CDP, and connect to the server."""
@@ -338,13 +338,13 @@ class CDPTransport:
         if not code:
             return
         assert self.cdp is not None
-        # re-inject on every future navigation (replace any previous block)
-        if self._init_script_id is not None:
-            await self.cdp.call("Page.removeScriptToEvaluateOnNewDocument",
-                                identifier=self._init_script_id)
+        # append (don't replace) — the server emits one 'init' per block:
+        # combined-on-(re)connect, then a single block per live add_init.
         res = await self.cdp.call("Page.addScriptToEvaluateOnNewDocument",
                                   source=_wrap_exec(code))
-        self._init_script_id = res.get("identifier")
+        sid = res.get("identifier")
+        if sid:
+            self._init_script_ids.append(sid)
         # and run it once for the current document
         await self.evaluate(code)
 
@@ -400,10 +400,37 @@ class CDPTransport:
         await self.cdp.call("Input.dispatchKeyEvent", **dict(common, type="keyUp"))
 
     async def type_text(self, text: str) -> None:
-        """Insert text as a trusted input event (Input.insertText)."""
+        """Insert text as a trusted input event (Input.insertText).
+
+        Note: this dispatches input events to the focused element. In rich-text
+        editors like tiptap that handle Enter (e.g. submit-on-Enter), a newline
+        in ``text`` can trigger an unintended submit. For those editors use
+        :meth:`paste_text` instead, which routes through execCommand and inserts
+        newlines as literal text without firing key handlers.
+        """
         if self.cdp is None:
             raise CDPError("not started")
         await self.cdp.call("Input.insertText", text=text)
+
+    async def paste_text(self, text: str) -> None:
+        """Insert text via ``document.execCommand('insertText', ...)`` on the
+        currently focused element.
+
+        Unlike :meth:`type_text` (which routes through Input.insertText / DOM
+        input events), this goes through the browser's editing-command pipeline
+        and inserts newlines as literal characters or paragraph breaks without
+        firing key-event handlers. This is the right primitive for inserting
+        multi-line text into editors that interpret Enter as submit
+        (e.g. tiptap / ProseMirror on claude.ai, chatgpt.com).
+
+        Caller is responsible for focusing the target element first.
+        """
+        if self.cdp is None:
+            raise CDPError("not started")
+        text_js = json.dumps(text)
+        expr = f"document.execCommand('insertText', false, {text_js})"
+        await self.cdp.call("Runtime.evaluate", expression=expr,
+                            awaitPromise=False, returnByValue=True)
 
     async def click(self, x: float, y: float, *, button: str = "left") -> None:
         """Dispatch a trusted mouse click at viewport coordinates (x, y)."""

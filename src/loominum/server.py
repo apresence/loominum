@@ -77,15 +77,15 @@ class RemoteLum:
     
     async def handle_browser(self, websocket):
         """Handle browser WebSocket connection."""
-        print(f"🔌 Browser connected: {websocket.remote_address}")
+        logger.info("Browser connected: %s", websocket.remote_address)
         self.browser_ws = websocket
-        
+
         try:
             async for message in websocket:
                 data = json.loads(message)
-                
+
                 if data['type'] == 'ready':
-                    print(f"✓ Browser ready: {data.get('url', 'unknown')}")
+                    logger.info("Browser ready: %s", data.get('url', 'unknown'))
                     # Send initialization code to reset browser state
                     await self._send_init(websocket)
 
@@ -111,19 +111,19 @@ class RemoteLum:
                         del self.pending_calls[call_id]
         
         except websockets.exceptions.ConnectionClosed:
-            print("⚠️  Browser disconnected")
+            logger.warning("Browser disconnected")
         finally:
             self.browser_ws = None
-    
+
     async def handle_python_client(self, websocket):
         """Handle Python client WebSocket connection."""
-        print(f"🐍 Python client connected: {websocket.remote_address}")
+        logger.info("Python client connected: %s", websocket.remote_address)
         self.python_clients.add(websocket)
-        
+
         try:
-            print(f"🐍 Waiting for messages from Python client...")
+            logger.debug("Waiting for messages from Python client...")
             async for message in websocket:
-                print(f"🐍 Received message: {message[:100]}...")
+                logger.debug("Received message: %s...", message[:100])
                 data = json.loads(message)
                 
                 if data['type'] == 'exec':
@@ -176,10 +176,11 @@ class RemoteLum:
 
                 elif data['type'] == 'add_init':
                     self.add_init(data['code'])
+                    await self._push_init_block(data['code'])
                     await websocket.send(json.dumps({'type': 'ok'}))
 
         except websockets.exceptions.ConnectionClosed:
-            print("⚠️  Python client disconnected")
+            logger.warning("Python client disconnected")
         finally:
             self.python_clients.discard(websocket)
 
@@ -366,6 +367,25 @@ class RemoteLum:
             except Exception:
                 pass
     
+    async def _push_init_block(self, code: str) -> None:
+        """Push a single init block to the currently connected browser, if any.
+
+        Lets mid-session add_init() take effect immediately instead of waiting
+        for the next browser (re)connect. Paired with CDPTransport._handle_init's
+        append-only behavior so blocks accumulate rather than overwrite.
+        """
+        ws = self.browser_ws
+        if ws is None or not code:
+            return
+        message = json.dumps({'type': 'init', 'code': code})
+        try:
+            if hasattr(ws, 'send_str'):
+                await ws.send_str(message)
+            else:
+                await ws.send(message)
+        except Exception as e:
+            logger.warning(f"Failed to push init block to browser: {e}")
+
     def add_init(self, code: str) -> None:
         """
         Register initialization code to run in browser on connect/reconnect.
@@ -606,13 +626,14 @@ class RemoteLum:
 
                     elif data['type'] == 'add_init':
                         self.add_init(data['code'])
+                        await self._push_init_block(data['code'])
                         await ws.send_json({'type': 'ok'})
 
                 elif msg.type == aiohttp.WSMsgType.ERROR:
-                    print(f'⚠️ WebSocket error: {ws.exception()}')
+                    logger.warning("WebSocket error: %s", ws.exception())
 
         except Exception as e:
-            print(f"⚠️ Python client disconnected: {e}")
+            logger.warning("Python client disconnected: %s", e)
         finally:
             self.python_clients.discard(ws)
 
