@@ -9,13 +9,9 @@ import asyncio
 import websockets
 
 import typing as tp
-from pathlib import Path
 from datetime import datetime
 
-try:
-    from .config import LumConf
-except ImportError:
-    from loominum.config import LumConf
+from .config import LumConf
 
 logger = logging.getLogger(__name__)
 
@@ -91,38 +87,21 @@ _CONSOLE_TAP_JS: str = r"""
 
 class LumClient:
     """Client for connecting to a remote Loominum server."""
-    
-    def __init__(self, url: tp.Optional[str] = None, db: tp.Optional[tp.Any] = None, ssl_verify: bool = True,
-                 cert_path: tp.Optional[str] = None, key_path: tp.Optional[str] = None):
-        """
-        Initialize Loominum client.
 
-        Args:
-            url: WebSocket URL to connect to. If None, uses client_url from Loominum config.
-                 Supports formats:
-                 - 'https://host/path' (converts to wss://host/path/client)
-                 - 'http://host:port/path' (converts to ws://host:port/path/client)
-                 - 'ws://host:port' (legacy, appends /client)
-            db: Optional ClipDB instance for API call logging
-            ssl_verify: If False, disables SSL certificate verification (for self-signed certs)
-            cert_path: Path to client certificate PEM file (optional, defaults to config location)
-            key_path: Path to client private key PEM file (optional, defaults to config location)
-        """
-        if url is None:
-            config = LumConf()
-            url = config.client_url
-            self._cert_path = cert_path or str(Path(config.config_path.parent) / 'cert.pem')
-            self._key_path = key_path or str(Path(config.config_path.parent) / 'key.pem')
+    def __init__(self, *, conf: tp.Optional[LumConf] = None,
+                 db: tp.Optional[tp.Any] = None, ssl_verify: bool = True,
+                 cert_path: tp.Optional[str] = None, key_path: tp.Optional[str] = None):
+        if conf is None:
+            raise ValueError("conf is required: LumClient(conf=LumConf(...))")
+
+        url = conf.client_url
+
+        if conf.data_dir:
+            self._cert_path = cert_path or str(conf.data_dir / 'cert.pem')
+            self._key_path = key_path or str(conf.data_dir / 'key.pem')
         else:
-            import os
-            prj_dir = os.getenv('PRJ_DIR')
-            if not prj_dir:
-                raise RuntimeError(
-                    "PRJ_DIR environment variable not set. "
-                    "Please run: . .init"
-                )
-            self._cert_path = cert_path or str(Path(prj_dir) / 'data/loominum/cert.pem')
-            self._key_path = key_path or str(Path(prj_dir) / 'data/loominum/key.pem')
+            self._cert_path = cert_path
+            self._key_path = key_path
         
         # Parse and construct WebSocket URL
         if url.startswith('http://') or url.startswith('https://'):

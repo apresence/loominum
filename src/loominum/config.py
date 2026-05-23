@@ -1,120 +1,74 @@
 """
-Configuration management for the Loominum server.
-
-Loads settings from data/loominum/config.json using $PRJ_DIR environment variable.
+Configuration for Loominum.
 """
 
-import os
 import json
-import typing as tp  # type: ignore[unusedImport]
+import typing as tp
 
 from pathlib import Path
 
 
 class LumConf:
-    """Loominum server configuration loaded from data/loominum/config.json."""
-    
-    def __init__(self, config_path: tp.Optional[Path] = None):
-        """
-        Load configuration from file.
-        
-        Args:
-            config_path: Path to config file. If None, uses $PRJ_DIR/data/loominum/config.json
-        
-        Raises:
-            RuntimeError: If PRJ_DIR environment variable is not set
-            FileNotFoundError: If config file doesn't exist
-        """
-        if config_path is None:
-            prj_dir = os.getenv('PRJ_DIR')
-            if not prj_dir:
-                raise RuntimeError(
-                    "PRJ_DIR environment variable not set. "
-                    "Please run: . .init"
-                )
-            config_path = Path(prj_dir) / 'data' / 'loominum' / 'config.json'
-        
-        self.config_path = Path(config_path)
-        
-        if not self.config_path.exists():
-            raise FileNotFoundError(
-                f"Loominum config not found: {self.config_path}\n"
-                f"Expected location: $PRJ_DIR/data/loominum/config.json"
-            )
-        
-        with open(self.config_path, 'r') as f:
-            self._data: tp.Dict[str, tp.Any] = json.load(f)
-    
+    """Loominum configuration — construct with kwargs or load from a JSON file."""
+
+    def __init__(self, *,
+                 config_path: tp.Optional[tp.Union[str, Path]] = None,
+                 server_url: str = "http://127.0.0.1:7773",
+                 client_url: str = "http://127.0.0.1:7773",
+                 log_file: str = "log/lum.log",
+                 verbose: bool = False,
+                 cert_sans: tp.Optional[str] = None,
+                 data_dir: tp.Optional[tp.Union[str, Path]] = None):
+        self._data: tp.Dict[str, tp.Any] = {
+            'server_url': server_url,
+            'client_url': client_url,
+            'log_file': log_file,
+            'verbose': verbose,
+            'cert_sans': cert_sans,
+        }
+
+        self.config_path: tp.Optional[Path] = None
+        if config_path is not None:
+            self.config_path = Path(config_path)
+            if not self.config_path.exists():
+                raise FileNotFoundError(f"Config not found: {self.config_path}")
+            with open(self.config_path, 'r') as f:
+                self._data.update(json.load(f))
+
+        self.data_dir: tp.Optional[Path] = (
+            Path(data_dir) if data_dir
+            else self.config_path.parent if self.config_path
+            else None
+        )
+
     @property
     def server_url(self) -> str:
-        """
-        Server URL for binding (scheme://host:port/path).
-        
-        Examples:
-            - 'https://0.0.0.0:7993' (bind all interfaces on port 7993, SSL)
-            - 'http://127.0.0.1:7993/lum' (localhost on port 7993, path /lum)
-        
-        Raises:
-            KeyError: If server_url not configured
-        """
-        if 'server_url' not in self._data:
-            raise KeyError("server_url must be configured in data/loominum/config.json")
         return self._data['server_url']
-    
+
     @property
     def client_url(self) -> str:
-        """
-        Client connection URL (what clients use to connect).
-        
-        May differ from server_url (e.g., server binds 0.0.0.0 but clients connect to hostname).
-        
-        Examples:
-            - 'https://tau:7993' (client connects to hostname 'tau')
-            - 'https://192.168.1.100:7993/lum' (client connects via IP + path)
-        
-        Raises:
-            KeyError: If client_url not configured
-        """
-        if 'client_url' not in self._data:
-            raise KeyError("client_url must be configured in data/loominum/config.json")
         return self._data['client_url']
-    
+
     @property
     def cert_sans(self) -> tp.Optional[str]:
-        """
-        Certificate Subject Alternative Names (comma-separated).
-        
-        If present, enables SSL/TLS. If None, server runs without SSL.
-        
-        Examples:
-            - 'tau,myhost.local' (hostnames)
-            - 'tau,192.168.1.100' (hostname + IP)
-            - 'tau,myhost.local,192.168.1.100' (multiple)
-        
-        Returns:
-            Comma-separated list of SANs, or None if SSL disabled
-        """
         return self._data.get('cert_sans')
-    
+
     @property
     def verbose(self) -> bool:
-        """Verbose logging enabled."""
         return self._data.get('verbose', False)
-    
+
     @property
     def log_file(self) -> str:
-        """Log file path (relative to project root)."""
         return self._data.get('log_file', 'log/lum.log')
-    
+
     def get(self, key: str, default: tp.Any = None) -> tp.Any:
-        """Get raw config value."""
         return self._data.get(key, default)
-    
+
     def set(self, key: str, value: tp.Any) -> None:
-        """Set config value (runtime only, not saved)."""
         self._data[key] = value
-    
+
     def save(self) -> None:
-        """Save current configuration to file."""
+        if self.config_path is None:
+            raise RuntimeError("No config_path — cannot save")
         with open(self.config_path, 'w') as f:
             json.dump(self._data, f, indent=2)

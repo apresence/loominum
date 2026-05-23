@@ -189,6 +189,7 @@ def test_find_target():
 
 def test_cdp_bridge_e2e():
     async def scenario():
+        from loominum.config import LumConf
         from loominum.server import start_server, lum
         from loominum.client import LumClient
 
@@ -199,11 +200,11 @@ def test_cdp_bridge_e2e():
         fake = FakeCDPBrowser(cdp_port)
         await fake.start()
 
-        server_task = asyncio.create_task(start_server("127.0.0.1", server_port))
+        conf = LumConf(server_url=f"http://127.0.0.1:{server_port}",
+                        client_url=f"http://127.0.0.1:{server_port}")
+        server_task = asyncio.create_task(start_server(conf))
         await _wait_port(server_port)
 
-        # init code registered before the sidecar connects — the server
-        # replays it on the browser's 'ready'.
         lum.add_init("window.__lum_init = true;")
 
         transport = CDPTransport(f"http://127.0.0.1:{server_port}",
@@ -211,14 +212,13 @@ def test_cdp_bridge_e2e():
         await transport.start()
         relay = asyncio.create_task(transport.run_forever())
         await _wait_until(lum.is_connected)
-        await asyncio.sleep(0.3)  # let the init round-trip settle
+        await asyncio.sleep(0.3)
 
-        # 1. init code injected for navigation-survival
         assert any(m == "Page.addScriptToEvaluateOnNewDocument"
                    and "__lum_init" in p.get("source", "")
                    for m, p in fake.received), "init code was not injected"
 
-        async with LumClient(url=f"http://127.0.0.1:{server_port}") as client:
+        async with LumClient(conf=conf) as client:
             # 2. exec round-trip: client -> server -> sidecar -> (fake) browser
             fake.eval_result = 42
             result = await client.exec("return 6 * 7")
@@ -273,12 +273,15 @@ def test_real_browser_e2e():
         return
 
     async def scenario():
+        from loominum.config import LumConf
         from loominum.server import start_server, lum
         from loominum.client import LumClient
 
         lum.reset()
         server_port = _free_port()
-        server_task = asyncio.create_task(start_server("127.0.0.1", server_port))
+        conf = LumConf(server_url=f"http://127.0.0.1:{server_port}",
+                        client_url=f"http://127.0.0.1:{server_port}")
+        server_task = asyncio.create_task(start_server(conf))
         await _wait_port(server_port)
 
         transport = CDPTransport(f"http://127.0.0.1:{server_port}",
@@ -287,7 +290,7 @@ def test_real_browser_e2e():
         relay = asyncio.create_task(transport.run_forever())
         await _wait_until(lum.is_connected)
 
-        async with LumClient(url=f"http://127.0.0.1:{server_port}") as client:
+        async with LumClient(conf=conf) as client:
             answer = await client.exec("return 6 * 7")
             assert answer == 42, f"real browser exec returned {answer!r}"
             ua = await client.exec("return navigator.userAgent")

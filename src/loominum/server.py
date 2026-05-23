@@ -7,13 +7,12 @@ Combined HTTP + WebSocket server that:
 
 Browser connects once, then Python can drive the page remotely.
 
-fetch(`${CLIENT_CONNECTION_URL}/remote.js?t=`+Date.now()).then(r=>r.text()).then(eval);
+fetch(`${SERVER_URL}/remote.js?t=`+Date.now()).then(r=>r.text()).then(eval);
 
 Dependencies:
     pip install aiohttp websockets
 """
 
-import sys
 import json
 import time
 import asyncio
@@ -24,50 +23,24 @@ import uuid
 
 import typing as tp  # type: ignore[unusedImport]
 
-try:
-    from .common import EXEC_LISTEN_HOST, EXEC_LISTEN_PORT, CLIENT_CONNECTION_URL, EXEC_PATH_PREFIX
-except ImportError:
-    from common import EXEC_LISTEN_HOST, EXEC_LISTEN_PORT, CLIENT_CONNECTION_URL, EXEC_PATH_PREFIX
-
 from pathlib import Path
+from urllib.parse import urlparse
 
 import aiohttp.web
 import websockets
 
-# Check PRJ_DIR first before imports
-prj_dir = os.getenv('PRJ_DIR')
-if not prj_dir:
-    raise RuntimeError("PRJ_DIR environment variable not set. Please run: . .init")
+from .config import LumConf
 
-# Add src directory to path for imports
-sys.path.insert(0, str(Path(prj_dir) / 'src'))
-
-from loominum.config import LumConf
-
-# Setup logging - use Loominum config for log file path
-try:
-    lum_config = LumConf()
-    log_file = lum_config.log_file
-except Exception:
-    log_file = 'log/lum.log'
-
-log_path = Path(prj_dir) / log_file
-log_path.parent.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_path),
-        logging.StreamHandler()
-    ]
-)
 logger = logging.getLogger(__name__)
 
-# Get project directories
-project_root = Path(prj_dir)
 script_dir = Path(__file__).resolve().parent
 htdocs_dir = script_dir / 'htdocs'
+
+# Set by start_server(conf) — read by handler functions
+_conf: tp.Optional[LumConf] = None
+_client_url: str = ""
+_path_prefix: str = ""
+_listen_port: int = 7773
 
 
 class RemoteLum:
@@ -665,9 +638,9 @@ async def handle_websocket(request):
 
 async def handle_cert_pem(request):
     """Serve the raw certificate file for manual installation."""
-    assert prj_dir is not None, "PRJ_DIR not set"
-    prj_dir_path = Path(prj_dir)
-    cert_file = prj_dir_path / 'data' / 'loominum' / 'cert.pem'
+    if _conf is None or _conf.data_dir is None:
+        return aiohttp.web.Response(text="No data_dir configured.", status=404)
+    cert_file = _conf.data_dir / 'cert.pem'
 
     if not cert_file.exists():
         return aiohttp.web.Response(
@@ -767,7 +740,7 @@ async def handle_verify(request):
                 <li>Paste and run this command:</li>
             </ol>
             <div class="command">
-                fetch('{CLIENT_CONNECTION_URL}/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
+                fetch('{_client_url}/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
             </div>
             <p>You should see: <code>✓ Connected to Loominum</code></p>
         </div>
@@ -795,11 +768,10 @@ async def handle_verify(request):
 
 async def handle_remote_js(request):
     """Serve remote.js with dynamically injected server URL."""
-    # Use CLIENT_CONNECTION_URL if configured, otherwise fall back to Host header
-    if CLIENT_CONNECTION_URL:
-        server_url = CLIENT_CONNECTION_URL
+    if _client_url:
+        server_url = _client_url
     else:
-        host = request.headers.get('Host', f'http://localhost:{EXEC_LISTEN_PORT}')
+        host = request.headers.get('Host', f'http://localhost:{_listen_port}')
         server_url = f"http://{host}" if not host.startswith('http') else host
     
     # Read the remote.js file
@@ -824,16 +796,20 @@ async def handle_remote_js(request):
 lum = RemoteLum()
 
 
-async def start_server(
-    listen_host=EXEC_LISTEN_HOST,
-    listen_port=EXEC_LISTEN_PORT
-):
+async def start_server(conf: LumConf):
     """Start combined HTTP + WebSocket server using aiohttp."""
-    # Determine the client connection URL
-    if CLIENT_CONNECTION_URL:
-        display_url = CLIENT_CONNECTION_URL
-    else:
-        display_url = f"http://localhost:{listen_port}"
+    global _conf, _client_url, _path_prefix, _listen_port
+
+    _conf = conf
+    parsed = urlparse(conf.server_url)
+    listen_host = parsed.hostname or '0.0.0.0'
+    listen_port = parsed.port or (28111 if parsed.scheme == 'https' else 7773)
+    _listen_port = listen_port
+    _path_prefix = parsed.path.rstrip('/') if parsed.path else ''
+    _client_url = conf.client_url
+    prefix = _path_prefix
+
+    display_url = _client_url or f"http://localhost:{listen_port}"
     
     logger.info("=" * 60)
     logger.info("🚀 Loominum Server")
@@ -859,7 +835,6 @@ async def start_server(
     app = aiohttp.web.Application()
     
     # Add routes with path prefix support
-    prefix = EXEC_PATH_PREFIX
     app.router.add_get(f'{prefix}/remote', handle_websocket)
     app.router.add_get(f'{prefix}/client', handle_websocket)
     app.router.add_get(f'{prefix}/remote.js', handle_remote_js)  # Dynamic injection
@@ -894,13 +869,13 @@ async def start_server(
     
     # SSL context (if certificate exists)
     ssl_context = None
-    assert prj_dir is not None, "PRJ_DIR not set"
-    prj_dir_path = Path(prj_dir)
-    cert_dir = prj_dir_path / 'data' / 'loominum'
-    cert_file = cert_dir / 'cert.pem'
-    key_file = cert_dir / 'key.pem'
-    
-    if cert_file.exists() and key_file.exists():
+    cert_file = None
+    key_file = None
+    if conf.data_dir:
+        cert_file = conf.data_dir / 'cert.pem'
+        key_file = conf.data_dir / 'key.pem'
+
+    if cert_file and key_file and cert_file.exists() and key_file.exists():
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         ssl_context.load_cert_chain(cert_file, key_file)
         logger.info(f"✓ SSL enabled (using {cert_file})")
@@ -943,7 +918,22 @@ async def example_usage():
 
 def main():
     """Console-script entrypoint (the `lum` command)."""
-    asyncio.run(start_server())
+    config_path = None
+    prj_dir = os.getenv('PRJ_DIR')
+    if prj_dir:
+        config_path = Path(prj_dir) / 'data' / 'loominum' / 'config.json'
+
+    conf = LumConf(config_path=config_path)
+
+    log_path = Path(prj_dir or '.') / conf.log_file
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
+    )
+
+    asyncio.run(start_server(conf))
 
 
 if __name__ == '__main__':
