@@ -1,6 +1,6 @@
 # Browser Event System
 
-UnBilliCord supports bidirectional event-driven communication:
+Loominum supports bidirectional event-driven communication:
 - **Python → Browser**: Execute code, navigate, initialize state
 - **Browser → Python**: Emit events based on DOM changes, user actions, or conditions
 
@@ -13,10 +13,10 @@ When the server restarts, all initialization code is automatically re-sent to th
 ### 1. Register Initialization Code (Python)
 
 ```python
-from unbillicord.server import ubc
+from loominum.server import lum
 
 # Set up browser-side observer
-ubc.add_init('''
+lum.add_init('''
     // Observe download completions
     const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
@@ -44,7 +44,7 @@ async def on_download_ready(data):
     print(f"Download ready: {filename}")
     # Process the file...
 
-ubc.on('download_ready', on_download_ready)
+lum.on('download_ready', on_download_ready)
 ```
 
 ### 3. Emit Events (Browser)
@@ -66,7 +66,7 @@ Or in ad-hoc executed code:
 
 ```python
 # Python triggers browser check
-result = await ubc.exec('''
+result = await lum.exec('''
     const incomplete = document.querySelectorAll('.pending-download');
     if (incomplete.length > 0) {
         window._remote.emit('downloads_pending', {
@@ -99,10 +99,10 @@ When the server restarts or browser reconnects:
 
 ```python
 # setup_download_monitor.py
-from unbillicord.server import ubc
+from loominum.server import lum
 
 # Browser-side: Watch for download links
-ubc.add_init('''
+lum.add_init('''
     function watchDownloads() {
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
@@ -132,7 +132,7 @@ async def handle_download_appeared(data):
     print(f"Download appeared: {data['filename']}")
     
     # Trigger the download
-    await ubc.exec(f'''
+    await lum.exec(f'''
         const link = document.querySelector(`a[data-clip-id="{data['clipId']}"]`);
         link.click();
     ''')
@@ -142,14 +142,14 @@ async def handle_download_complete(data):
     # Move file to clips directory
     await move_file(data['filename'])
 
-ubc.on('download_appeared', handle_download_appeared)
-ubc.on('download_complete', handle_download_complete)
+lum.on('download_appeared', handle_download_appeared)
+lum.on('download_complete', handle_download_complete)
 ```
 
 ## Pattern: Polling with Cleanup
 
 ```python
-ubc.add_init('''
+lum.add_init('''
     function pollForElement(selector, callback, interval = 1000) {
         const id = setInterval(() => {
             const el = document.querySelector(selector);

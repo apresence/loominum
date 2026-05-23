@@ -1,5 +1,5 @@
-# Check if UnBilliCord certificate is installed
-Write-Host "Checking for UnBilliCord certificate..." -ForegroundColor Cyan
+# Check if Loominum certificate is installed
+Write-Host "Checking for Loominum certificate..." -ForegroundColor Cyan
 Write-Host ""
 
 # Check LocalMachine\Root store

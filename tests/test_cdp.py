@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Automated test harness for the UnBilliCord CDP sidecar transport.
+Automated test harness for the Loominum CDP sidecar transport.
 
 Covers:
   - pure-unit helpers (URL / exec-wrapping, page-script templating)
   - find_target against a fake CDP /json endpoint
-  - a full e2e of the bridge: a real UnBilliCord server + a real CDPTransport
-    + a real UBCClient, with a *fake CDP browser* standing in for Chrome.
+  - a full e2e of the bridge: a real Loominum server + a real CDPTransport
+    + a real LumClient, with a *fake CDP browser* standing in for Chrome.
     Exercises exec round-trip, page->client events, init injection, navigate.
   - an e2e against a *real* browser on localhost:9222, auto-skipped when no
     such browser is reachable.
@@ -29,7 +29,7 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 import aiohttp
 from aiohttp import web
 
-from unbillicord.cdp import (
+from loominum.cdp import (
     CDPTransport, CDPError, find_target, page_script,
     _ws_remote_url, _wrap_exec,
 )
@@ -99,8 +99,8 @@ class FakeCDPBrowser:
             return {"identifier": f"script-{self._script_n}"}
         return {}
 
-    async def emit_binding(self, payload, name="ubcSend"):
-        """Simulate the page calling window.ubcSend(payload)."""
+    async def emit_binding(self, payload, name="lumSend"):
+        """Simulate the page calling window.lumSend(payload)."""
         assert self._ws is not None, "no CDP client connected to the fake browser"
         await self._ws.send_json({
             "method": "Runtime.bindingCalled",
@@ -189,10 +189,10 @@ def test_find_target():
 
 def test_cdp_bridge_e2e():
     async def scenario():
-        from unbillicord.server import start_server, ubc
-        from unbillicord.client import UBCClient
+        from loominum.server import start_server, lum
+        from loominum.client import LumClient
 
-        ubc.reset()
+        lum.reset()
         server_port = _free_port()
         cdp_port = _free_port()
 
@@ -204,21 +204,21 @@ def test_cdp_bridge_e2e():
 
         # init code registered before the sidecar connects — the server
         # replays it on the browser's 'ready'.
-        ubc.add_init("window.__ubc_init = true;")
+        lum.add_init("window.__lum_init = true;")
 
         transport = CDPTransport(f"http://127.0.0.1:{server_port}",
                                  debug_url=f"http://127.0.0.1:{cdp_port}")
         await transport.start()
         relay = asyncio.create_task(transport.run_forever())
-        await _wait_until(ubc.is_connected)
+        await _wait_until(lum.is_connected)
         await asyncio.sleep(0.3)  # let the init round-trip settle
 
         # 1. init code injected for navigation-survival
         assert any(m == "Page.addScriptToEvaluateOnNewDocument"
-                   and "__ubc_init" in p.get("source", "")
+                   and "__lum_init" in p.get("source", "")
                    for m, p in fake.received), "init code was not injected"
 
-        async with UBCClient(url=f"http://127.0.0.1:{server_port}") as client:
+        async with LumClient(url=f"http://127.0.0.1:{server_port}") as client:
             # 2. exec round-trip: client -> server -> sidecar -> (fake) browser
             fake.eval_result = 42
             result = await client.exec("return 6 * 7")
@@ -273,10 +273,10 @@ def test_real_browser_e2e():
         return
 
     async def scenario():
-        from unbillicord.server import start_server, ubc
-        from unbillicord.client import UBCClient
+        from loominum.server import start_server, lum
+        from loominum.client import LumClient
 
-        ubc.reset()
+        lum.reset()
         server_port = _free_port()
         server_task = asyncio.create_task(start_server("127.0.0.1", server_port))
         await _wait_port(server_port)
@@ -285,9 +285,9 @@ def test_real_browser_e2e():
                                  debug_url=REAL_CDP_URL)
         await transport.start()
         relay = asyncio.create_task(transport.run_forever())
-        await _wait_until(ubc.is_connected)
+        await _wait_until(lum.is_connected)
 
-        async with UBCClient(url=f"http://127.0.0.1:{server_port}") as client:
+        async with LumClient(url=f"http://127.0.0.1:{server_port}") as client:
             answer = await client.exec("return 6 * 7")
             assert answer == 42, f"real browser exec returned {answer!r}"
             ua = await client.exec("return navigator.userAgent")

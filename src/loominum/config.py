@@ -1,7 +1,7 @@
 """
-Configuration management for the UnBilliCord server.
+Configuration management for the Loominum server.
 
-Loads settings from data/unbillicord/config.json using $PRJ_DIR environment variable.
+Loads settings from data/loominum/config.json using $PRJ_DIR environment variable.
 """
 
 import os
@@ -11,15 +11,15 @@ import typing as tp  # type: ignore[unusedImport]
 from pathlib import Path
 
 
-class UBCConfig:
-    """UnBilliCord server configuration loaded from data/unbillicord/config.json."""
+class LumConf:
+    """Loominum server configuration loaded from data/loominum/config.json."""
     
     def __init__(self, config_path: tp.Optional[Path] = None):
         """
         Load configuration from file.
         
         Args:
-            config_path: Path to config file. If None, uses $PRJ_DIR/data/unbillicord/config.json
+            config_path: Path to config file. If None, uses $PRJ_DIR/data/loominum/config.json
         
         Raises:
             RuntimeError: If PRJ_DIR environment variable is not set
@@ -32,14 +32,14 @@ class UBCConfig:
                     "PRJ_DIR environment variable not set. "
                     "Please run: . .init"
                 )
-            config_path = Path(prj_dir) / 'data' / 'unbillicord' / 'config.json'
+            config_path = Path(prj_dir) / 'data' / 'loominum' / 'config.json'
         
         self.config_path = Path(config_path)
         
         if not self.config_path.exists():
             raise FileNotFoundError(
-                f"UnBilliCord config not found: {self.config_path}\n"
-                f"Expected location: $PRJ_DIR/data/unbillicord/config.json"
+                f"Loominum config not found: {self.config_path}\n"
+                f"Expected location: $PRJ_DIR/data/loominum/config.json"
             )
         
         with open(self.config_path, 'r') as f:
@@ -52,13 +52,13 @@ class UBCConfig:
         
         Examples:
             - 'https://0.0.0.0:7993' (bind all interfaces on port 7993, SSL)
-            - 'http://127.0.0.1:7993/ubc' (localhost on port 7993, path /ubc)
+            - 'http://127.0.0.1:7993/lum' (localhost on port 7993, path /lum)
         
         Raises:
             KeyError: If server_url not configured
         """
         if 'server_url' not in self._data:
-            raise KeyError("server_url must be configured in data/unbillicord/config.json")
+            raise KeyError("server_url must be configured in data/loominum/config.json")
         return self._data['server_url']
     
     @property
@@ -70,13 +70,13 @@ class UBCConfig:
         
         Examples:
             - 'https://tau:7993' (client connects to hostname 'tau')
-            - 'https://192.168.1.100:7993/ubc' (client connects via IP + path)
+            - 'https://192.168.1.100:7993/lum' (client connects via IP + path)
         
         Raises:
             KeyError: If client_url not configured
         """
         if 'client_url' not in self._data:
-            raise KeyError("client_url must be configured in data/unbillicord/config.json")
+            raise KeyError("client_url must be configured in data/loominum/config.json")
         return self._data['client_url']
     
     @property
@@ -104,7 +104,7 @@ class UBCConfig:
     @property
     def log_file(self) -> str:
         """Log file path (relative to project root)."""
-        return self._data.get('log_file', 'log/ubc.log')
+        return self._data.get('log_file', 'log/lum.log')
     
     def get(self, key: str, default: tp.Any = None) -> tp.Any:
         """Get raw config value."""

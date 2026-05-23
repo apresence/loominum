@@ -6,8 +6,8 @@ These templates are used to generate platform-specific certificate installation 
 
 The following placeholders are replaced at runtime:
 
-- `{{CERTIFICATE}}` - Replaced with the contents of `data/unbillicord/cert.pem`
-- `{{CLIENT_URL}}` - Replaced with UnBilliCord's client connection URL (from config)
+- `{{CERTIFICATE}}` - Replaced with the contents of `data/loominum/cert.pem`
+- `{{CLIENT_URL}}` - Replaced with Loominum's client connection URL (from config)
 
 ## Files
 
@@ -18,7 +18,7 @@ The following placeholders are replaced at runtime:
 
 1. User runs: `curl -k https://host:port/install-cert.sh | sudo bash`
 2. Server reads template from this directory
-3. Server reads certificate from `data/unbillicord/cert.pem`
+3. Server reads certificate from `data/loominum/cert.pem`
 4. Server replaces `{{CERTIFICATE}}` and `{{CLIENT_URL}}` placeholders
 5. Server returns the customized script
 6. Script executes and installs the embedded certificate

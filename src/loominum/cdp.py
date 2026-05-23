@@ -1,11 +1,11 @@
 """
-UnBilliCord CDP sidecar transport.
+Loominum CDP sidecar transport.
 
-Bridges a CDP-enabled browser to a running UnBilliCord server. The sidecar
+Bridges a CDP-enabled browser to a running Loominum server. The sidecar
 speaks the Chrome DevTools Protocol to the browser and, separately, opens a
 WebSocket to the server's /remote endpoint — impersonating a normal browser.
 
-From the server's and the UBCClient's point of view nothing changes. But the
+From the server's and the LumClient's point of view nothing changes. But the
 page bridge is now injected over CDP (so it survives navigation via
 Page.addScriptToEvaluateOnNewDocument), and input can be dispatched as trusted
 events (Input.dispatchKeyEvent / Input.dispatchMouseEvent).
@@ -16,7 +16,7 @@ Requires the target browser launched with --remote-debugging-port, e.g.:
 
 Run the sidecar against a running server with:
 
-    ubc-cdp --target-url example.com
+    lum-cdp --target-url example.com
 """
 
 import sys
@@ -34,7 +34,7 @@ import websockets
 logger = logging.getLogger(__name__)
 
 DEFAULT_DEBUG_URL = "http://localhost:9222"
-BINDING_NAME = "ubcSend"
+BINDING_NAME = "lumSend"
 
 
 def page_script(binding_name: str = BINDING_NAME) -> str:
@@ -219,7 +219,7 @@ def _ws_remote_url(server_url: str) -> str:
 
 
 def _wrap_exec(code: str) -> str:
-    """Wrap UnBilliCord exec/init code (a function body that may ``return``)
+    """Wrap Loominum exec/init code (a function body that may ``return``)
     into an awaitable IIFE — mirrors remote.js's safeExec."""
     return "(async () => {" + code + "\n})()"
 
@@ -234,7 +234,7 @@ def _format_exception(exc: dict) -> str:
 
 
 class CDPTransport:
-    """CDP sidecar — bridges a browser (over CDP) to an UnBilliCord server.
+    """CDP sidecar — bridges a browser (over CDP) to an Loominum server.
 
     The sidecar connects to the browser's DevTools endpoint and, separately,
     to the server's /remote WebSocket. It relays:
@@ -283,7 +283,7 @@ class CDPTransport:
         await self.cdp.call("Page.addScriptToEvaluateOnNewDocument", source=source)
         await self.cdp.call("Runtime.evaluate", expression=source)
 
-        # 5. connect to the UnBilliCord server, impersonating a browser
+        # 5. connect to the Loominum server, impersonating a browser
         ws_url = _ws_remote_url(self.server_url)
         ssl_arg = None
         if ws_url.startswith("wss://") and not self.verify_ssl:
@@ -292,7 +292,7 @@ class CDPTransport:
             ssl_arg.check_hostname = False
             ssl_arg.verify_mode = _ssl.CERT_NONE
         self._server_ws = await websockets.connect(ws_url, ssl=ssl_arg, max_size=None)
-        logger.info("connected to UnBilliCord server: %s", ws_url)
+        logger.info("connected to Loominum server: %s", ws_url)
 
         # 6. announce ourselves — prompts the server to replay init code
         url = await self.evaluate("return location.href")
@@ -306,7 +306,7 @@ class CDPTransport:
             async for raw in self._server_ws:
                 await self._handle_server_message(json.loads(raw))
         except websockets.exceptions.ConnectionClosed:
-            logger.info("UnBilliCord server connection closed")
+            logger.info("Loominum server connection closed")
 
     # --- server -> page --------------------------------------------------
 
@@ -360,7 +360,7 @@ class CDPTransport:
     # --- CDP actions -----------------------------------------------------
 
     async def evaluate(self, code: str, *, await_promise: bool = True) -> tp.Any:
-        """Evaluate UnBilliCord exec-style code (a function body) in the page.
+        """Evaluate Loominum exec-style code (a function body) in the page.
 
         Raises:
             CDPError: if the page code throws.
@@ -425,24 +425,24 @@ class CDPTransport:
 
 
 def _server_url_from_config() -> str:
-    """Best-effort: read client_url from the UnBilliCord config."""
-    from unbillicord.config import UBCConfig
-    return UBCConfig().client_url
+    """Best-effort: read client_url from the Loominum config."""
+    from loominum.config import LumConf
+    return LumConf().client_url
 
 
 def main() -> None:
-    """Console-script entrypoint — the ``ubc-cdp`` command."""
+    """Console-script entrypoint — the ``lum-cdp`` command."""
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     parser = argparse.ArgumentParser(
-        prog="ubc-cdp",
-        description="UnBilliCord CDP sidecar — bridge a CDP browser to a server.")
+        prog="lum-cdp",
+        description="Loominum CDP sidecar — bridge a CDP browser to a server.")
     parser.add_argument("--debug-url", default=DEFAULT_DEBUG_URL,
                         help=f"browser remote-debugging URL (default: {DEFAULT_DEBUG_URL})")
     parser.add_argument("--target-url", default=None,
                         help="only attach to a tab whose URL contains this substring")
     parser.add_argument("--server-url", default=None,
-                        help="UnBilliCord server URL (default: client_url from config)")
+                        help="Loominum server URL (default: client_url from config)")
     parser.add_argument("--no-verify-ssl", action="store_true",
                         help="skip TLS verification when the server is wss://")
     args = parser.parse_args()

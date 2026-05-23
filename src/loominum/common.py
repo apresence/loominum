@@ -14,10 +14,10 @@ if not prj_dir:
     )
 sys.path.insert(0, str(Path(prj_dir) / 'src'))
 
-from unbillicord.config import UBCConfig
+from loominum.config import LumConf
 
-# Load UnBilliCord configuration
-config = UBCConfig()
+# Load Loominum configuration
+config = LumConf()
 
 # Parse server_url for binding
 server_url_parsed = urlparse(config.server_url)

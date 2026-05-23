@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "unbillicord"
+name = "loominum"
 version = "0.1.0"
 description = "Drive and observe a live browser session from Python, with bidirectional async events."
 readme = "README.md"
@@ -20,8 +20,8 @@ dependencies = [
 ]
 
 [project.scripts]
-ubc = "unbillicord.server:main"
-ubc-cdp = "unbillicord.cdp:main"
+lum = "loominum.server:main"
+lum-cdp = "loominum.cdp:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/unbillicord"]
+packages = ["src/loominum"]

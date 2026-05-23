@@ -1,4 +1,4 @@
-// UnBilliCord — browser-side remote JavaScript bridge
+// Loominum — browser-side remote JavaScript bridge
 // Connects to Python server via WebSocket and executes commands
 
 (async function initRemote() {
@@ -89,7 +89,7 @@
     function connect() {
         const now = Date.now();
         if (reconnectAttempts === 0) {
-            conlog(`🔌 Connecting to UnBilliCord (${WS_URL})...`);
+            conlog(`🔌 Connecting to Loominum (${WS_URL})...`);
         } else if (now - lastReconnectLog >= LOG_INTERVAL) {
             conlog(`🔌 Still attempting to connect... (${reconnectAttempts} attempts)`);
             lastReconnectLog = now;
@@ -99,9 +99,9 @@
 
         ws.onopen = () => {
             if (reconnectAttempts > 0) {
-                conlog(`✓ Reconnected to UnBilliCord (after ${reconnectAttempts} attempts)`);
+                conlog(`✓ Reconnected to Loominum (after ${reconnectAttempts} attempts)`);
             } else {
-                conlog('✓ Connected to UnBilliCord');
+                conlog('✓ Connected to Loominum');
             }
             conlog('   Python can now send commands to this browser session');
 
@@ -185,7 +185,7 @@
                 clearInterval(heartbeatInterval);
                 heartbeatInterval = null;
             }
-            conlog(`⚠️  Disconnected from UnBilliCord (code: ${event.code}, reason: ${event.reason || 'none'}, clean: ${event.wasClean})`);
+            conlog(`⚠️  Disconnected from Loominum (code: ${event.code}, reason: ${event.reason || 'none'}, clean: ${event.wasClean})`);
             reconnectAttempts++;
             setTimeout(connect, RECONNECT_INTERVAL);
         };

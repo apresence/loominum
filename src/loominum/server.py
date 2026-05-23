@@ -1,5 +1,5 @@
 """
-UnBilliCord Server
+Loominum Server
 
 Combined HTTP + WebSocket server that:
 - Serves static files from htdocs/ (HTTP)
@@ -42,14 +42,14 @@ if not prj_dir:
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(prj_dir) / 'src'))
 
-from unbillicord.config import UBCConfig
+from loominum.config import LumConf
 
-# Setup logging - use UnBilliCord config for log file path
+# Setup logging - use Loominum config for log file path
 try:
-    ubc_config = UBCConfig()
-    log_file = ubc_config.log_file
+    lum_config = LumConf()
+    log_file = lum_config.log_file
 except Exception:
-    log_file = 'log/ubc.log'
+    log_file = 'log/lum.log'
 
 log_path = Path(prj_dir) / log_file
 log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,7 +70,7 @@ script_dir = Path(__file__).resolve().parent
 htdocs_dir = script_dir / 'htdocs'
 
 
-class RemoteUBC:
+class RemoteLum:
     """Manages WebSocket connections: browser and Python clients."""
     
     def __init__(self):
@@ -404,7 +404,7 @@ class RemoteUBC:
             code: JavaScript code to execute on initialization
             
         Example:
-            ubc.add_init('''
+            lum.add_init('''
                 // Set up download observer
                 window.observeDownloads = function() {
                     // ... observer code ...
@@ -427,7 +427,7 @@ class RemoteUBC:
             async def on_download(data):
                 print(f"Downloaded: {data['filename']}")
             
-            ubc.on('download_complete', on_download)
+            lum.on('download_complete', on_download)
         """
         if event_type not in self.event_handlers:
             self.event_handlers[event_type] = []
@@ -448,10 +448,10 @@ class RemoteUBC:
             
         Example:
             # Remove specific handler
-            ubc.off('download_complete', my_handler)
+            lum.off('download_complete', my_handler)
 
             # Remove all handlers for event type
-            ubc.off('download_complete')
+            lum.off('download_complete')
         """
         if event_type not in self.event_handlers:
             logger.warning(f"No handlers registered for '{event_type}'")
@@ -486,7 +486,7 @@ class RemoteUBC:
             Number of event types that had handlers
             
         Example:
-            ubc.clear_handlers()
+            lum.clear_handlers()
         """
         count = len(self.event_handlers)
         self.event_handlers.clear()
@@ -501,7 +501,7 @@ class RemoteUBC:
             Number of init blocks that were cleared
             
         Example:
-            ubc.clear_init()
+            lum.clear_init()
         """
         count = len(self.init_code)
         self.init_code.clear()
@@ -518,7 +518,7 @@ class RemoteUBC:
             Tuple of (event_types_cleared, init_blocks_cleared)
             
         Example:
-            ubc.reset()
+            lum.reset()
         """
         events_cleared = self.clear_handlers()
         init_cleared = self.clear_init()
@@ -653,9 +653,9 @@ async def handle_websocket(request):
     await ws.prepare(request)
     
     if path.endswith('/remote'):
-        await ubc.handle_browser_aio(ws)
+        await lum.handle_browser_aio(ws)
     elif path.endswith('/client'):
-        await ubc.handle_python_client_aio(ws)
+        await lum.handle_python_client_aio(ws)
     else:
         logger.warning(f"Invalid WebSocket path: {path}")
         await ws.close(code=1002, message=b'Invalid path')
@@ -667,7 +667,7 @@ async def handle_cert_pem(request):
     """Serve the raw certificate file for manual installation."""
     assert prj_dir is not None, "PRJ_DIR not set"
     prj_dir_path = Path(prj_dir)
-    cert_file = prj_dir_path / 'data' / 'unbillicord' / 'cert.pem'
+    cert_file = prj_dir_path / 'data' / 'loominum' / 'cert.pem'
 
     if not cert_file.exists():
         return aiohttp.web.Response(
@@ -682,7 +682,7 @@ async def handle_cert_pem(request):
         text=cert_content,
         content_type='application/x-pem-file',
         headers={
-            'Content-Disposition': 'attachment; filename="ubc.pem"',
+            'Content-Disposition': 'attachment; filename="lum.pem"',
             'Cache-Control': 'no-store, no-cache, must-revalidate',
             'Access-Control-Allow-Origin': '*'
         }
@@ -696,7 +696,7 @@ async def handle_verify(request):
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>UnBilliCord Server - Connection Verified</title>
+    <title>Loominum Server - Connection Verified</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -755,7 +755,7 @@ async def handle_verify(request):
         
         <div class="status">
             <strong>Connection Status:</strong> {scheme.upper()} connection established successfully<br>
-            <strong>Server:</strong> UnBilliCord Server<br>
+            <strong>Server:</strong> Loominum Server<br>
             <strong>Endpoint:</strong> {request.url}
         </div>
         
@@ -769,7 +769,7 @@ async def handle_verify(request):
             <div class="command">
                 fetch('{CLIENT_CONNECTION_URL}/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
             </div>
-            <p>You should see: <code>✓ Connected to UnBilliCord</code></p>
+            <p>You should see: <code>✓ Connected to Loominum</code></p>
         </div>
         
         <h3>Available Endpoints:</h3>
@@ -820,8 +820,8 @@ async def handle_remote_js(request):
     )
 
 
-# Global UBC instance
-ubc = RemoteUBC()
+# Global Lum instance
+lum = RemoteLum()
 
 
 async def start_server(
@@ -836,7 +836,7 @@ async def start_server(
         display_url = f"http://localhost:{listen_port}"
     
     logger.info("=" * 60)
-    logger.info("🚀 UnBilliCord Server")
+    logger.info("🚀 Loominum Server")
     logger.info("=" * 60)
     logger.info(f"Listening on:     {listen_host}:{listen_port}")
     logger.info(f"Client URL:       {display_url}")
@@ -896,7 +896,7 @@ async def start_server(
     ssl_context = None
     assert prj_dir is not None, "PRJ_DIR not set"
     prj_dir_path = Path(prj_dir)
-    cert_dir = prj_dir_path / 'data' / 'unbillicord'
+    cert_dir = prj_dir_path / 'data' / 'loominum'
     cert_file = cert_dir / 'cert.pem'
     key_file = cert_dir / 'key.pem'
     
@@ -919,30 +919,30 @@ async def start_server(
 
 async def example_usage():
     """
-    Example of how to use UnBilliCord.
+    Example of how to use Loominum.
 
     Infrastructure only — application logic builds on top of exec()/navigate().
     """
 
     # Wait for browser to connect
     print("\nWaiting for browser connection...")
-    while not ubc.is_connected():
+    while not lum.is_connected():
         await asyncio.sleep(0.5)
 
     print("✓ Browser connected!\n")
 
     # Navigate to a page
     print("🧭 Navigating...")
-    await ubc.navigate('https://example.com')
+    await lum.navigate('https://example.com')
     await asyncio.sleep(2)
 
     # Low-level JavaScript execution
-    result = await ubc.exec("return document.title")
+    result = await lum.exec("return document.title")
     print(f"Page title: {result}")
 
 
 def main():
-    """Console-script entrypoint (the `ubc` command)."""
+    """Console-script entrypoint (the `lum` command)."""
     asyncio.run(start_server())
 
 

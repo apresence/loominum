@@ -1,5 +1,5 @@
 """
-Python client for connecting to a remote UnBilliCord server.
+Python client for connecting to a remote Loominum server.
 """
 
 import json
@@ -13,9 +13,9 @@ from pathlib import Path
 from datetime import datetime
 
 try:
-    from .config import UBCConfig
+    from .config import LumConf
 except ImportError:
-    from unbillicord.config import UBCConfig
+    from loominum.config import LumConf
 
 logger = logging.getLogger(__name__)
 
@@ -89,16 +89,16 @@ _CONSOLE_TAP_JS: str = r"""
 """.strip()
 
 
-class UBCClient:
-    """Client for connecting to a remote UnBilliCord server."""
+class LumClient:
+    """Client for connecting to a remote Loominum server."""
     
     def __init__(self, url: tp.Optional[str] = None, db: tp.Optional[tp.Any] = None, ssl_verify: bool = True,
                  cert_path: tp.Optional[str] = None, key_path: tp.Optional[str] = None):
         """
-        Initialize UnBilliCord client.
+        Initialize Loominum client.
 
         Args:
-            url: WebSocket URL to connect to. If None, uses client_url from UnBilliCord config.
+            url: WebSocket URL to connect to. If None, uses client_url from Loominum config.
                  Supports formats:
                  - 'https://host/path' (converts to wss://host/path/client)
                  - 'http://host:port/path' (converts to ws://host:port/path/client)
@@ -109,7 +109,7 @@ class UBCClient:
             key_path: Path to client private key PEM file (optional, defaults to config location)
         """
         if url is None:
-            config = UBCConfig()
+            config = LumConf()
             url = config.client_url
             self._cert_path = cert_path or str(Path(config.config_path.parent) / 'cert.pem')
             self._key_path = key_path or str(Path(config.config_path.parent) / 'key.pem')
@@ -121,8 +121,8 @@ class UBCClient:
                     "PRJ_DIR environment variable not set. "
                     "Please run: . .init"
                 )
-            self._cert_path = cert_path or str(Path(prj_dir) / 'data/unbillicord/cert.pem')
-            self._key_path = key_path or str(Path(prj_dir) / 'data/unbillicord/key.pem')
+            self._cert_path = cert_path or str(Path(prj_dir) / 'data/loominum/cert.pem')
+            self._key_path = key_path or str(Path(prj_dir) / 'data/loominum/key.pem')
         
         # Parse and construct WebSocket URL
         if url.startswith('http://') or url.startswith('https://'):
@@ -155,11 +155,11 @@ class UBCClient:
         self.max_consecutive_429s: int = 5
     
     async def connect(self):
-        """Connect to the UnBilliCord server."""
+        """Connect to the Loominum server."""
         try:
             import ssl as sslmod
             ssl_ctx = None
-            print(f"Connecting to UnBilliCord server at {self.ws_url} with SSL verify={self.ssl_verify}...")
+            print(f"Connecting to Loominum server at {self.ws_url} with SSL verify={self.ssl_verify}...")
             if self.ws_url.startswith('wss://'):
                 ssl_ctx = sslmod.create_default_context()
                 if not self.ssl_verify:
@@ -254,7 +254,7 @@ class UBCClient:
     
     async def is_browser_connected(self) -> bool:
         """
-        Check if a browser is connected to the UnBilliCord server.
+        Check if a browser is connected to the Loominum server.
         
         Returns:
             True if browser is connected, False otherwise
@@ -326,7 +326,7 @@ class UBCClient:
         Execute API call with server-level throttling and logging.
 
         All throttled API calls should use this instead of exec() directly.
-        Throttle timing is enforced by the UnBilliCord server (shared across
+        Throttle timing is enforced by the Loominum server (shared across
         all connected clients). This method handles logging and 429 safety.
 
         Args:

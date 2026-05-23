@@ -1,4 +1,4 @@
-# UnBilliCord
+# Loominum
 
 Browser automation system with bidirectional event-driven communication.
 
@@ -41,10 +41,10 @@ Browser automation system with bidirectional event-driven communication.
 ### Start Server
 
 ```bash
-python src/unbillicord/server.py
+python src/loominum/server.py
 ```
 
-Server runs on `http://localhost:7773` (configurable via `data/unbillicord/config.json`)
+Server runs on `http://localhost:7773` (configurable via `data/loominum/config.json`)
 
 ### Connect Browser
 
@@ -57,9 +57,9 @@ fetch('http://localhost:7773/remote.js?t='+Date.now()).then(r=>r.text()).then(ev
 ### Execute Code (Python)
 
 ```python
-from unbillicord import UBCClient
+from loominum import LumClient
 
-client = UBCClient()
+client = LumClient()
 await client.connect()
 
 # Execute JavaScript
@@ -77,10 +77,10 @@ See [EVENTS.md](EVENTS.md) for full documentation.
 ### Register Browser Observers (Python)
 
 ```python
-from unbillicord.server import ubc
+from loominum.server import lum
 
 # This code runs in browser on connect/reconnect
-ubc.add_init('''
+lum.add_init('''
     // Watch for new download links
     const observer = new MutationObserver((mutations) => {
         // ... detect downloads ...
@@ -99,7 +99,7 @@ async def on_download_ready(data):
     print(f"Download: {data['filename']}")
     # Process...
 
-ubc.on('download_ready', on_download_ready)
+lum.on('download_ready', on_download_ready)
 ```
 
 ### State Persistence
@@ -114,45 +114,45 @@ This ensures clean state after restarts.
 
 ## API
 
-### Server (RemoteUBC)
+### Server (RemoteLum)
 
 **Event Handlers:**
 ```python
-ubc.on(event_type: str, handler: Callable)
+lum.on(event_type: str, handler: Callable)
     # Register event handler (async function)
 
-ubc.off(event_type: str, handler: Callable = None)
+lum.off(event_type: str, handler: Callable = None)
     # Remove specific handler or all handlers for event type
     # Returns True if removed, False if not found
 
-ubc.clear_handlers() -> int
+lum.clear_handlers() -> int
     # Clear all event handlers
     # Returns number of event types cleared
 
-ubc.reset() -> tuple[int, int]
+lum.reset() -> tuple[int, int]
     # Clear both handlers and init code
     # Returns (events_cleared, init_blocks_cleared)
 ```
 
 **Initialization Code:**
 ```python
-ubc.add_init(code: str)
+lum.add_init(code: str)
     # Register initialization code for browser
 
-ubc.clear_init() -> int
+lum.clear_init() -> int
     # Clear all initialization code
     # Returns number of blocks cleared
 ```
 
 **Execution:**
 ```python
-await ubc.exec(code: str, timeout: float = 30.0)
+await lum.exec(code: str, timeout: float = 30.0)
     # Execute JavaScript, return result
 
-await ubc.navigate(url: str)
+await lum.navigate(url: str)
     # Navigate browser to URL
 
-ubc.is_connected() -> bool
+lum.is_connected() -> bool
     # Check browser connection status
 ```
 
@@ -166,16 +166,16 @@ ubc.is_connected() -> bool
    - Browser cleans up old state (observers, listeners, intervals)
 
 2. ⚠️ **Must be re-registered** (in your startup code):
-   - Event handlers (`ubc.on()`)
-   - Initialization code (`ubc.add_init()`)
+   - Event handlers (`lum.on()`)
+   - Initialization code (`lum.add_init()`)
 
 **Pattern for restart-safe setup:**
 ```python
 # In your main application startup (e.g., __main__ or setup function)
-from unbillicord.server import ubc
+from loominum.server import lum
 
 # Register init code (clears on restart, must re-register)
-ubc.add_init('''
+lum.add_init('''
     // Browser-side setup
     window.observeDownloads = function() { ... };
     window.observeDownloads();
@@ -185,25 +185,25 @@ ubc.add_init('''
 async def on_download(data):
     print(f"Download: {data['filename']}")
 
-ubc.on('download_ready', on_download)
+lum.on('download_ready', on_download)
 ```
 
 **Don't do this** (handlers lost on restart):
 ```python
 # ❌ In a one-off script
-ubc.on('event', my_handler)  # Lost when script exits or server restarts
+lum.on('event', my_handler)  # Lost when script exits or server restarts
 ```
 
 **Manual cleanup during development:**
 ```python
 # Remove specific handler
-ubc.off('download_ready', my_handler)
+lum.off('download_ready', my_handler)
 
 # Remove all handlers for event
-ubc.off('download_ready')
+lum.off('download_ready')
 
 # Clear everything
-ubc.reset()
+lum.reset()
 ```
 
 ### Browser (window._remote)
@@ -223,15 +223,15 @@ window._remote.cleanup()
     // Manually trigger cleanup (testing/debug)
 ```
 
-### Client (UBCClient)
+### Client (LumClient)
 
 ```python
-client = UBCClient(url=None, db=None)
+client = LumClient(url=None, db=None)
 await client.connect()
 await client.close()
 
 # Context manager (preferred)
-async with UBCClient() as client:
+async with LumClient() as client:
     result = await client.exec('document.title')
 ```
 
@@ -290,12 +290,12 @@ Browser JS calls window._remote.emit('event', data)
 
 ## Configuration
 
-Edit `data/unbillicord/config.json`:
+Edit `data/loominum/config.json`:
 
 ```json
 {
   "verbose": false,
-  "log_file": "log/ubc.log",
+  "log_file": "log/lum.log",
   "server_url": "http://127.0.0.1:7773",
   "client_url": "http://127.0.0.1:7773",
   "cert_sans": null
@@ -315,7 +315,7 @@ Edit `data/unbillicord/config.json`:
 - Check browser console for errors
 
 **Events not firing**
-- Verify handler is registered: `ubc.event_handlers`
+- Verify handler is registered: `lum.event_handlers`
 - Check init code was sent: look for "initialization" in server logs
 - Verify browser state: `window._remote` should exist
 
@@ -324,13 +324,13 @@ Edit `data/unbillicord/config.json`:
 - Check cleanup runs: look for "Cleaned up browser state" in console
 
 **Server restart loses handlers**
-- Handler registration (`ubc.on()`) must happen before browser connects
+- Handler registration (`lum.on()`) must happen before browser connects
 - Put registration in your main application startup, not ad-hoc scripts
 
 ## CDP transport (sidecar mode)
 
-The `ubc-cdp` sidecar bridges a CDP-enabled browser to a running UnBilliCord
-server. From `ubc` and `UBCClient`'s perspective nothing changes — the server
+The `lum-cdp` sidecar bridges a CDP-enabled browser to a running Loominum
+server. From `lum` and `LumClient`'s perspective nothing changes — the server
 just sees "a browser" connected on `/remote`. Under the hood the sidecar
 relays between Chrome DevTools Protocol on one side and the server's
 WebSocket on the other.
@@ -356,24 +356,24 @@ WebSocket on the other.
 2. Start the server (in another shell):
 
    ```bash
-   PYTHONPATH=src python -m unbillicord.server
+   PYTHONPATH=src python -m loominum.server
    ```
 
 3. Start the sidecar against a target tab:
 
    ```bash
-   ubc-cdp --target-url example.com
+   lum-cdp --target-url example.com
    ```
 
    `--target-url` is an optional substring filter (first matching `type=page`
    target wins). Add `--server-url http://host:port` to override the server URL.
 
-4. Use `UBCClient` exactly as in JS-injection mode.
+4. Use `LumClient` exactly as in JS-injection mode.
 
 ### Python API
 
 ```python
-from unbillicord import CDPTransport
+from loominum import CDPTransport
 
 t = CDPTransport(
     server_url="http://127.0.0.1:7773",

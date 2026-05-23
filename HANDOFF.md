@@ -1,10 +1,10 @@
-# unbillicord — handoff for the next agent
+# loominum — handoff for the next agent
 
 Read this first if you're picking this project up.
 
 ## What this is
 
-`unbillicord` is a standalone Python library. The goal is a publishable Python
+`loominum` is a standalone Python library. The goal is a publishable Python
 package that does the heavy lifting of driving a live browser from Python with
 bidirectional async events — across two transports — so application code
 doesn't have to.
@@ -15,19 +15,19 @@ plan.
 ## Status
 
 The library is a site-agnostic primitive: the public API surface carries no
-site-specific code, and `data/unbillicord/config.json` ships localhost
+site-specific code, and `data/loominum/config.json` ships localhost
 defaults (port 7773, TLS off). **Both transports work today:** the JS-injection
-bootstrap from day one, and the CDP sidecar (`src/unbillicord/cdp.py`, the
-`ubc-cdp` console script). Bridge logic is covered by an automated fake-CDP
+bootstrap from day one, and the CDP sidecar (`src/loominum/cdp.py`, the
+`lum-cdp` console script). Bridge logic is covered by an automated fake-CDP
 test harness in `tests/test_cdp.py`.
 
 Still to do before this is comfortable as a library:
 
 - `common.py` requires `$PRJ_DIR`. Awkward for a library — consider supporting
   an explicit config path or conventional config-discovery (cwd,
-  `~/.config/unbillicord/`, env). The `ubc-cdp` sidecar inherits the same
+  `~/.config/loominum/`, env). The `lum-cdp` sidecar inherits the same
   requirement (the server it talks to imports the gated machinery).
-- `config.py` raises if `data/unbillicord/config.json` is missing. A library
+- `config.py` raises if `data/loominum/config.json` is missing. A library
   should ship sensible defaults and only require config for non-default setups.
 
 ## Architecture — current (JS injection)
@@ -35,7 +35,7 @@ Still to do before this is comfortable as a library:
 ```
 Browser tab                         Python host
 ┌──────────────┐                   ┌────────────────────┐
-│  Page        │                   │  RemoteUBC         │
+│  Page        │                   │  RemoteLum         │
 │   ⇣          │   /remote (WSS)   │    (server.py)     │
 │  remote.js   ◄═══════════════════►                    │
 │   ⇡ emit()   │                   │     ⇣              │
@@ -43,7 +43,7 @@ Browser tab                         Python host
 └──────────────┘                   │     ⇡              │
                                    │   /client (WSS)    │
                                    │     ⇣              │
-                                   │  UBCClient ◄───────┼─ your code
+                                   │  LumClient ◄───────┼─ your code
                                    │   (client.py)      │
                                    └────────────────────┘
 ```
@@ -67,8 +67,8 @@ Browser (--remote-debugging-port=9222)
           │  same WS protocol the page would speak in JS-injection mode
           ⇡
 ┌────────────────────┐
-│  RemoteUBC         │  ← unchanged
-│  UBCClient         │  ← unchanged
+│  RemoteLum         │  ← unchanged
+│  LumClient         │  ← unchanged
 └────────────────────┘
 ```
 
@@ -78,7 +78,7 @@ server. From the server's perspective nothing changes. The sidecar:
 1. Discovers the target tab via `GET http://localhost:9222/json` (filter
    by URL substring).
 2. Opens a CDP WebSocket to the tab's `webSocketDebuggerUrl`.
-3. Registers a CDP binding (e.g. `ubcSend`) that the page can call —
+3. Registers a CDP binding (e.g. `lumSend`) that the page can call —
    payload arrives as `Runtime.bindingCalled`.
 4. Injects `remote.js` via `Page.addScriptToEvaluateOnNewDocument` so it
    survives navigation.
@@ -101,19 +101,19 @@ Both transports must expose the same surface:
 **Server side (Python):**
 
 ```python
-ubc.add_init(js: str)
-ubc.on(event: str, handler: Awaitable)
-ubc.off(event: str, handler=None)
-ubc.exec(code: str, timeout: float = 30.0) -> Any
-ubc.navigate(url: str)
-ubc.is_connected() -> bool
-ubc.reset()
+lum.add_init(js: str)
+lum.on(event: str, handler: Awaitable)
+lum.off(event: str, handler=None)
+lum.exec(code: str, timeout: float = 30.0) -> Any
+lum.navigate(url: str)
+lum.is_connected() -> bool
+lum.reset()
 ```
 
 **Client side (Python, talking to a remote server over /client WSS):**
 
 ```python
-UBCClient(url=None)
+LumClient(url=None)
 client.exec / navigate / on / off / add_init / enable_console_tap
 ```
 
@@ -138,15 +138,15 @@ between transports by config change alone.
    stdlib `appdirs`-style default).
 
 2. **Phase 1** — package skeleton. **Done**: `pyproject.toml` (hatchling),
-   `ubc` console script, runtime deps pinned (`aiohttp>=3.9`,
+   `lum` console script, runtime deps pinned (`aiohttp>=3.9`,
    `websockets>=12`), Apache-2.0 `LICENSE`.
 
-3. **Phase 2** — CDP sidecar. **Done**: `src/unbillicord/cdp.py` with
+3. **Phase 2** — CDP sidecar. **Done**: `src/loominum/cdp.py` with
    `CDPClient` (JSON-RPC) and `CDPTransport(server_url, debug_url, target_url)`
    exposing `evaluate`, `navigate`, `dispatch_key`, `type_text`, and `click`.
    The sidecar opens an outbound WSS to the existing `/remote` endpoint,
    impersonating a browser; `server.py` and `client.py` are untouched.
-   `ubc-cdp` console script and `tests/test_cdp.py` (fake-CDP e2e + a
+   `lum-cdp` console script and `tests/test_cdp.py` (fake-CDP e2e + a
    skip-on-no-browser real e2e against `localhost:9222`).
 
 4. **Phase 3** — docs, examples, release. Examples for each transport;
@@ -162,7 +162,7 @@ between transports by config change alone.
 
 ## Open questions to flag to Chris
 
-- PyPI package name. `unbillicord` is currently **available** on PyPI
+- PyPI package name. `loominum` is currently **available** on PyPI
   (no published package by that name) — claim it or pick another.
 - Whether to support a `.init`-style sourceable env file, or a more
   conventional config-discovery.

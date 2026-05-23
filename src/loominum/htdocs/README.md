@@ -1,8 +1,8 @@
-# UnBilliCord Server Endpoints
+# Loominum Server Endpoints
 
 ## Browser Connection
 
-Connect a browser to the UnBilliCord server:
+Connect a browser to the Loominum server:
 ```javascript
 fetch('https://tau:7993/remote.js?t='+Date.now()).then(r=>r.text()).then(eval);
 ```

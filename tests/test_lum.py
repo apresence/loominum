@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script to verify UnBilliCord server connection and browser state.
+Test script to verify Loominum server connection and browser state.
 Checks if browser is connected, tests communication, etc.
 """
 
@@ -11,26 +11,26 @@ from pathlib import Path
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from unbillicord.client import UBCClient
-from unbillicord.server import ubc
+from loominum.client import LumClient
+from loominum.server import lum
 
 
-async def test_ubc():
-    """Test UnBilliCord connection and browser status."""
+async def test_lum():
+    """Test Loominum connection and browser status."""
     print("=" * 60)
-    print("🔧 UnBilliCord Connection Test")
+    print("🔧 Loominum Connection Test")
     print("=" * 60)
 
     # Check server state
-    print(f"1. Server browser connected: {ubc.is_connected()}")
-    print(f"2. Server python clients: {len(ubc.python_clients)}")
+    print(f"1. Server browser connected: {lum.is_connected()}")
+    print(f"2. Server python clients: {len(lum.python_clients)}")
     print()
     
     # Test Python client connection
     print("3. Testing Python client connection...")
     try:
-        async with UBCClient() as client:
-            print("   ✓ Python client connected to UnBilliCord")
+        async with LumClient() as client:
+            print("   ✓ Python client connected to Loominum")
             
             print("4. Testing browser communication...")
             try:
@@ -55,13 +55,13 @@ async def test_ubc():
                 
                 print()
                 print("=" * 60)
-                print("🎉 ALL TESTS PASSED - UnBilliCord is working correctly!")
+                print("🎉 ALL TESTS PASSED - Loominum is working correctly!")
                 print("=" * 60)
                 
             except Exception as e:
                 print(f"   ❌ Browser communication failed: {e}")
                 print()
-                print("💡 ISSUE: Browser not connected to UnBilliCord")
+                print("💡 ISSUE: Browser not connected to Loominum")
                 print("📋 SOLUTION:")
                 print("   1. Open the browser to the page you want to drive")
                 print("   2. Open DevTools (F12)")
@@ -73,9 +73,9 @@ async def test_ubc():
     except Exception as e:
         print(f"   ❌ Python client connection failed: {e}")
         print()
-        print("💡 ISSUE: UnBilliCord server not running")
-        print("📋 SOLUTION: Start it with: PYTHONPATH=src python -m unbillicord.server")
+        print("💡 ISSUE: Loominum server not running")
+        print("📋 SOLUTION: Start it with: PYTHONPATH=src python -m loominum.server")
         print()
 
 if __name__ == "__main__":
-    asyncio.run(test_ubc())
+    asyncio.run(test_lum())
