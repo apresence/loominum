@@ -15,8 +15,12 @@ from loominum.client import LumClient
 from loominum.server import lum
 
 
-async def test_lum():
-    """Test Loominum connection and browser status."""
+async def run_smoke():
+    """Manual smoke check -- needs a live `lum` server and a connected browser.
+
+    Named ``run_smoke`` (not ``test_*``) so pytest does not collect it; run it
+    directly: ``python tests/test_lum.py``.
+    """
     print("=" * 60)
     print("Loominum Connection Test")
     print("=" * 60)
@@ -74,4 +78,4 @@ async def test_lum():
         print()
 
 if __name__ == "__main__":
-    asyncio.run(test_lum())
+    asyncio.run(run_smoke())
