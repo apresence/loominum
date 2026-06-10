@@ -290,7 +290,9 @@ Browser JS calls window._remote.emit('event', data)
 
 ## Configuration
 
-Edit `data/loominum/config.json`:
+Loominum runs with sensible defaults and **no config file required**. To
+customize, drop a JSON config in any of the conventional locations below, or
+override individual settings via environment variables.
 
 ```json
 {
@@ -300,6 +302,43 @@ Edit `data/loominum/config.json`:
   "client_url": "http://127.0.0.1:7773",
   "cert_sans": null
 }
+```
+
+### Config discovery
+
+The `lum` and `lum-cdp` commands look for a config file in this order
+(first match wins); if none is found, built-in defaults are used:
+
+1. `$LOOMINUM_CONFIG` — explicit full path to a config file
+2. `./loominum.json` or `./data/loominum/config.json` (current directory)
+3. `$XDG_CONFIG_HOME/loominum/config.json` (or `~/.config/loominum/config.json`)
+4. `$PRJ_DIR/data/loominum/config.json` (legacy, kept for back-compat)
+
+A `$LOOMINUM_CONFIG` that points at a missing file raises a clear error
+(you asked for that file); the other locations silently fall through to
+defaults.
+
+### Environment overrides
+
+Any single setting can be overridden without a config file. An env var wins
+over both the file and the default:
+
+| Variable | Overrides |
+|---|---|
+| `LOOMINUM_SERVER_URL` | `server_url` |
+| `LOOMINUM_CLIENT_URL` | `client_url` |
+| `LOOMINUM_LOG_FILE`   | `log_file` |
+| `LOOMINUM_CERT_SANS`  | `cert_sans` |
+| `LOOMINUM_VERBOSE`    | `verbose` (`1/true/yes/on` -> true) |
+
+### From Python
+
+```python
+from loominum import LumConf, discover_config
+
+conf = LumConf.auto()                       # discover + load + apply env, else defaults
+conf = LumConf.auto(config_path="my.json")  # force a specific file
+path = discover_config()                     # the file that would be used, or None
 ```
 
 ## Examples

@@ -47,12 +47,12 @@ Same `lum.exec / on / add_init / navigate` API across both transports.
 loominum/
 ├── README.md              this file
 ├── HANDOFF.md             design doc for the next agent picking this up
-├── src/loominum/        library source (JS-injection base + planned CDP sidecar)
+├── src/loominum/        library source (JS-injection base + CDP sidecar)
 │   ├── __init__.py
 │   ├── server.py          WS server — handles both the /remote browser and /client python endpoints
 │   ├── client.py          Python client
-│   ├── common.py          shared config loader
-│   ├── config.py          config schema
+│   ├── config.py          config schema + discovery (discover_config, LumConf.auto)
+│   ├── cdp.py             CDP sidecar transport (lum-cdp)
 │   ├── htdocs/            served static files: remote.js (the bootstrap),
 │   │                       evtcap.js (console tap helper), install-cert scripts
 │   ├── scripts/           cert install helpers
@@ -62,18 +62,25 @@ loominum/
 ├── data/loominum/
 │   └── config.json        template — localhost defaults, no TLS
 └── tests/
-    └── test_lum.py        smoke test
+    ├── test_cdp.py        CDP bridge tests (fake-CDP harness)
+    ├── test_config.py     config discovery + env-override tests
+    └── test_lum.py        manual live-server smoke script
 ```
+
+## Installation
+
+```bash
+pip install loominum
+```
+
+Installs the `lum` (server) and `lum-cdp` (CDP sidecar) console scripts.
 
 ## Configuration
 
-Set `PRJ_DIR` to the project root before running:
-
-```bash
-export PRJ_DIR=/path/to/loominum
-```
-
-Then edit `$PRJ_DIR/data/loominum/config.json` for your transport:
+Loominum runs with localhost defaults and **no config file required**. To
+customize, drop a `config.json` in any conventional location or override
+single settings via environment variables — full precedence rules in
+[`src/loominum/README.md`](src/loominum/README.md#config-discovery).
 
 ```json
 {
@@ -85,6 +92,14 @@ Then edit `$PRJ_DIR/data/loominum/config.json` for your transport:
 }
 ```
 
+Quick paths:
+
+- A file: `./loominum.json`, `~/.config/loominum/config.json`, or
+  `$LOOMINUM_CONFIG=/full/path.json`. (`PRJ_DIR` is still honored for
+  back-compat but no longer required.)
+- A single setting: `LOOMINUM_SERVER_URL`, `LOOMINUM_CLIENT_URL`,
+  `LOOMINUM_LOG_FILE`, `LOOMINUM_CERT_SANS`, `LOOMINUM_VERBOSE`.
+
 For TLS: set `cert_sans` to a comma-separated list of hostnames/IPs to
 include in the cert SANs (e.g. `"localhost,192.168.1.100"`) and use an
 `https://` scheme on `server_url`. Cert install helpers under
@@ -93,8 +108,7 @@ include in the cert SANs (e.g. `"localhost,192.168.1.100"`) and use an
 ## Quick start (current JS-injection mode)
 
 ```bash
-cd $PRJ_DIR
-PYTHONPATH=src python -m loominum.server
+lum    # or, from a source checkout: PYTHONPATH=src python -m loominum.server
 ```
 
 Then in the browser DevTools console of the target page:
@@ -131,8 +145,7 @@ Then start the server and the sidecar (it discovers the target tab,
 auto-injects the page bridge, and impersonates a browser to the server):
 
 ```bash
-cd $PRJ_DIR
-PYTHONPATH=src python -m loominum.server &
+lum &                       # start the server (installed console script)
 lum-cdp --target-url example.com
 ```
 
