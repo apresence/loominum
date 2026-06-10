@@ -11,13 +11,41 @@ requires-python = ">=3.9"
 authors = [
     { name = "Christopher M. Mapes" },
 ]
-keywords = ["browser-automation", "websocket", "chrome-devtools-protocol", "scraping"]
+keywords = [
+    "browser-automation", "websocket", "chrome-devtools-protocol", "cdp",
+    "scraping", "asyncio", "browser-control", "remote-javascript",
+]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: AsyncIO",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
 dependencies = [
     "aiohttp>=3.9",
     "websockets>=12",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+# NOTE: confirm/replace with the public GitHub mirror before PyPI upload --
+# these point at the internal Gitea source of truth.
+[project.urls]
+Homepage = "http://tide.gigaro.ai:3000/gigacity/loominum"
+Repository = "http://tide.gigaro.ai:3000/gigacity/loominum.git"
+Issues = "http://tide.gigaro.ai:3000/gigacity/loominum/issues"
 
 [project.scripts]
 lum = "loominum.server:main"
