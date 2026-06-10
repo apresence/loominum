@@ -453,12 +453,12 @@ class CDPTransport:
 
 
 def _server_url_from_config() -> str:
-    """Best-effort: read client_url from config file via PRJ_DIR."""
-    import os
+    """Best-effort: resolve client_url via conventional config discovery.
+
+    Falls back to built-in defaults when no config file is found.
+    """
     from .config import LumConf
-    prj_dir = os.getenv('PRJ_DIR')
-    config_path = Path(prj_dir) / 'data' / 'loominum' / 'config.json' if prj_dir else None
-    return LumConf(config_path=config_path).client_url
+    return LumConf.auto().client_url
 
 
 def main() -> None:

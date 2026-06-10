@@ -939,14 +939,14 @@ async def example_usage():
 
 def main():
     """Console-script entrypoint (the `lum` command)."""
-    config_path = None
-    prj_dir = os.getenv('PRJ_DIR')
-    if prj_dir:
-        config_path = Path(prj_dir) / 'data' / 'loominum' / 'config.json'
+    conf = LumConf.auto()
 
-    conf = LumConf(config_path=config_path)
-
-    log_path = Path(prj_dir or '.') / conf.log_file
+    # Log relative to PRJ_DIR when set (back-compat), else the cwd; an
+    # absolute log_file is honored as-is.
+    log_base = Path(os.getenv('PRJ_DIR') or '.')
+    log_path = Path(conf.log_file)
+    if not log_path.is_absolute():
+        log_path = log_base / log_path
     log_path.parent.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
