@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bart-eta"
+version = "0.1.0"
+description = "BART real-time departures via loominum CDP -- a loominum example driver."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "loominum examples" }]
+license = "Apache-2.0"
+dependencies = [
+    "loominum[fetch]>=0.1.0",
+    "websockets>=12",
+]
+
+[project.scripts]
+bart-eta = "bart_eta.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
