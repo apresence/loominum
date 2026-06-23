@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "library-overdrive"
+version = "0.1.0"
+description = "Library catalog availability check via OverDrive + loominum CDP -- a loominum example driver."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "loominum examples" }]
+license = "Apache-2.0"
+dependencies = [
+    "loominum>=0.1.0",
+    "websockets>=12",
+]
+
+[project.scripts]
+library-overdrive = "library_overdrive.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
