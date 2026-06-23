@@ -39,6 +39,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
+fetch = ["beautifulsoup4>=4.12"]
 
 # NOTE: confirm/replace with the public GitHub mirror before PyPI upload --
 # these point at the internal Gitea source of truth.
