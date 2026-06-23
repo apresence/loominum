@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "loominum"
-version = "0.1.0"
+version = "0.2.0"
 description = "Drive and observe a live browser session from Python, with bidirectional async events."
 readme = "README.md"
 requires-python = ">=3.9"
